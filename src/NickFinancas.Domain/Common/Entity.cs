@@ -1,0 +1,17 @@
+namespace NickFinancas.Domain.Common;
+
+public abstract class Entity
+{
+    protected Entity(Guid id)
+    {
+        if (id == Guid.Empty)
+        {
+            throw new ArgumentException("O identificador nao pode ser vazio.", nameof(id));
+        }
+
+        Id = id;
+    }
+
+    public Guid Id { get; }
+}
+

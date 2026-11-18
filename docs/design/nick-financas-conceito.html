@@ -1,0 +1,493 @@
+<div id="nick-financas-mockup" aria-label="Conceito visual do aplicativo Nick Finanças">
+  <style>
+    #nick-financas-mockup {
+      --nf-bg: light-dark(#f4f6f4, #141817);
+      --nf-surface: light-dark(#ffffff, #1c2220);
+      --nf-surface-alt: light-dark(#eef2ef, #252c29);
+      --nf-sidebar: light-dark(#182622, #101614);
+      --nf-sidebar-text: #f3f7f5;
+      --nf-sidebar-muted: #9fb0aa;
+      --nf-text: light-dark(#17211e, #edf3f0);
+      --nf-muted: light-dark(#66736e, #a9b7b1);
+      --nf-border: light-dark(#dce3df, #35403b);
+      --nf-accent: #16806a;
+      --nf-accent-soft: light-dark(#dff2ec, #193d34);
+      --nf-positive: light-dark(#197553, #57c89b);
+      --nf-negative: light-dark(#b64b4b, #f17f7f);
+      --nf-warning: light-dark(#b7791f, #e8b65c);
+      --nf-chart-2: light-dark(#dd9f3d, #e5ad55);
+      --nf-shadow: light-dark(0 12px 32px rgba(25, 42, 36, .10), 0 12px 32px rgba(0, 0, 0, .22));
+      color: var(--nf-text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      width: 100%;
+    }
+
+    #nick-financas-mockup * { box-sizing: border-box; }
+    #nick-financas-mockup button,
+    #nick-financas-mockup select { font: inherit; }
+
+    #nick-financas-mockup .nf-window {
+      min-height: 720px;
+      display: grid;
+      grid-template-columns: 230px minmax(0, 1fr);
+      overflow: hidden;
+      background: var(--nf-bg);
+      border: 1px solid var(--nf-border);
+      border-radius: 8px;
+      box-shadow: var(--nf-shadow);
+    }
+
+    #nick-financas-mockup .nf-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      padding: 20px 14px 14px;
+      background: var(--nf-sidebar);
+      color: var(--nf-sidebar-text);
+    }
+
+    #nick-financas-mockup .nf-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 8px;
+      font-weight: 500;
+    }
+
+    #nick-financas-mockup .nf-brand-mark {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      background: #31a98e;
+      color: #071d17;
+    }
+
+    #nick-financas-mockup .nf-space-label {
+      margin: 0 8px 6px;
+      color: var(--nf-sidebar-muted);
+      font-size: 12px;
+    }
+
+    #nick-financas-mockup .nf-space-select {
+      width: 100%;
+      min-height: 42px;
+      padding: 0 10px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 6px;
+      background: rgba(255,255,255,.08);
+      color: var(--nf-sidebar-text);
+    }
+
+    #nick-financas-mockup .nf-space-select option { color: #17211e; }
+
+    #nick-financas-mockup .nf-nav {
+      display: grid;
+      gap: 3px;
+    }
+
+    #nick-financas-mockup .nf-nav button {
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--nf-sidebar-muted);
+      text-align: left;
+    }
+
+    #nick-financas-mockup .nf-nav button.is-active {
+      background: rgba(255,255,255,.11);
+      color: var(--nf-sidebar-text);
+    }
+
+    #nick-financas-mockup .nf-nav svg,
+    #nick-financas-mockup .nf-brand svg,
+    #nick-financas-mockup .nf-button svg,
+    #nick-financas-mockup .nf-profile svg { width: 17px; height: 17px; }
+
+    #nick-financas-mockup .nf-sidebar-footer {
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 8px 2px;
+      border-top: 1px solid rgba(255,255,255,.10);
+    }
+
+    #nick-financas-mockup .nf-avatar {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #31564c;
+      color: #fff;
+      font-size: 12px;
+    }
+
+    #nick-financas-mockup .nf-user { min-width: 0; }
+    #nick-financas-mockup .nf-user strong,
+    #nick-financas-mockup .nf-user span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #nick-financas-mockup .nf-user strong { font-size: 13px; font-weight: 500; }
+    #nick-financas-mockup .nf-user span { color: var(--nf-sidebar-muted); font-size: 11px; }
+
+    #nick-financas-mockup .nf-main { min-width: 0; }
+    #nick-financas-mockup .nf-topbar {
+      min-height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 26px;
+      border-bottom: 1px solid var(--nf-border);
+      background: var(--nf-surface);
+    }
+
+    #nick-financas-mockup .nf-period {
+      min-height: 36px;
+      padding: 0 10px;
+      border: 1px solid var(--nf-border);
+      border-radius: 6px;
+      background: var(--nf-surface);
+      color: var(--nf-text);
+    }
+
+    #nick-financas-mockup .nf-top-actions { display: flex; align-items: center; gap: 9px; }
+    #nick-financas-mockup .nf-button {
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 13px;
+      border: 1px solid var(--nf-border);
+      border-radius: 6px;
+      background: var(--nf-surface);
+      color: var(--nf-text);
+    }
+
+    #nick-financas-mockup .nf-button-primary {
+      border-color: var(--nf-accent);
+      background: var(--nf-accent);
+      color: #fff;
+    }
+
+    #nick-financas-mockup .nf-profile {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--nf-border);
+      border-radius: 6px;
+      background: var(--nf-surface);
+      color: var(--nf-muted);
+    }
+
+    #nick-financas-mockup .nf-content { padding: 24px 26px 28px; }
+    #nick-financas-mockup .nf-heading-row {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    #nick-financas-mockup h1,
+    #nick-financas-mockup h2,
+    #nick-financas-mockup h3,
+    #nick-financas-mockup p { margin: 0; }
+    #nick-financas-mockup h1 { font-size: 23px; line-height: 1.25; font-weight: 500; }
+    #nick-financas-mockup h2 { font-size: 15px; line-height: 1.3; font-weight: 500; }
+    #nick-financas-mockup h3 { font-size: 13px; line-height: 1.3; font-weight: 500; }
+    #nick-financas-mockup .nf-subtitle { margin-top: 4px; color: var(--nf-muted); font-size: 13px; }
+
+    #nick-financas-mockup .nf-sync {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--nf-muted);
+      font-size: 12px;
+    }
+
+    #nick-financas-mockup .nf-sync-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--nf-positive);
+    }
+
+    #nick-financas-mockup .nf-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border: 1px solid var(--nf-border);
+      border-radius: 8px;
+      background: var(--nf-surface);
+      overflow: hidden;
+    }
+
+    #nick-financas-mockup .nf-metric { min-width: 0; padding: 16px 17px; }
+    #nick-financas-mockup .nf-metric + .nf-metric { border-left: 1px solid var(--nf-border); }
+    #nick-financas-mockup .nf-metric-label { color: var(--nf-muted); font-size: 12px; }
+    #nick-financas-mockup .nf-metric-value { margin-top: 7px; font-size: 20px; font-weight: 500; font-variant-numeric: tabular-nums; }
+    #nick-financas-mockup .nf-positive { color: var(--nf-positive); }
+    #nick-financas-mockup .nf-negative { color: var(--nf-negative); }
+
+    #nick-financas-mockup .nf-dashboard-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(270px, .85fr);
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    #nick-financas-mockup .nf-panel {
+      min-width: 0;
+      padding: 17px;
+      border: 1px solid var(--nf-border);
+      border-radius: 8px;
+      background: var(--nf-surface);
+    }
+
+    #nick-financas-mockup .nf-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    #nick-financas-mockup .nf-text-action { border: 0; background: transparent; color: var(--nf-accent); font-size: 12px; }
+    #nick-financas-mockup .nf-chart {
+      height: 180px;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      align-items: end;
+      gap: 14px;
+      padding-top: 12px;
+      border-bottom: 1px solid var(--nf-border);
+    }
+
+    #nick-financas-mockup .nf-month {
+      height: 100%;
+      display: grid;
+      grid-template-rows: 1fr auto;
+      gap: 8px;
+      align-items: end;
+      text-align: center;
+      color: var(--nf-muted);
+      font-size: 11px;
+    }
+
+    #nick-financas-mockup .nf-bars { height: 100%; display: flex; align-items: end; justify-content: center; gap: 5px; }
+    #nick-financas-mockup .nf-bar { width: 12px; border-radius: 3px 3px 0 0; background: var(--nf-accent); }
+    #nick-financas-mockup .nf-bar.out { background: var(--nf-chart-2); }
+    #nick-financas-mockup .nf-legend { display: flex; gap: 18px; margin-top: 13px; color: var(--nf-muted); font-size: 11px; }
+    #nick-financas-mockup .nf-legend span { display: inline-flex; align-items: center; gap: 6px; }
+    #nick-financas-mockup .nf-swatch { width: 8px; height: 8px; border-radius: 2px; background: var(--nf-accent); }
+    #nick-financas-mockup .nf-swatch.out { background: var(--nf-chart-2); }
+
+    #nick-financas-mockup .nf-side-stack { display: grid; gap: 16px; }
+    #nick-financas-mockup .nf-reserve-total { font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+    #nick-financas-mockup .nf-reserve-caption { margin-top: 4px; color: var(--nf-muted); font-size: 12px; }
+    #nick-financas-mockup .nf-progress { height: 7px; margin-top: 13px; border-radius: 4px; overflow: hidden; background: var(--nf-surface-alt); }
+    #nick-financas-mockup .nf-progress > span { display: block; height: 100%; background: var(--nf-accent); }
+    #nick-financas-mockup .nf-goal-row { display: grid; gap: 8px; }
+    #nick-financas-mockup .nf-goal-meta { display: flex; justify-content: space-between; gap: 10px; color: var(--nf-muted); font-size: 11px; }
+    #nick-financas-mockup .nf-goal-meta strong { color: var(--nf-text); font-weight: 500; }
+
+    #nick-financas-mockup .nf-transactions { margin-top: 16px; }
+    #nick-financas-mockup .nf-transaction-list { display: grid; }
+    #nick-financas-mockup .nf-transaction {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 11px;
+      padding: 11px 0;
+      border-top: 1px solid var(--nf-border);
+    }
+
+    #nick-financas-mockup .nf-transaction-icon {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      background: var(--nf-surface-alt);
+      color: var(--nf-muted);
+    }
+
+    #nick-financas-mockup .nf-transaction-icon svg { width: 15px; height: 15px; }
+    #nick-financas-mockup .nf-transaction-name { min-width: 0; }
+    #nick-financas-mockup .nf-transaction-name strong { display: block; font-size: 13px; font-weight: 500; }
+    #nick-financas-mockup .nf-transaction-name span { color: var(--nf-muted); font-size: 11px; }
+    #nick-financas-mockup .nf-transaction-value { text-align: right; font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
+    #nick-financas-mockup .nf-transaction-value span { display: block; margin-top: 2px; color: var(--nf-muted); font-size: 10px; font-weight: 400; }
+
+    @media (max-width: 780px) {
+      #nick-financas-mockup .nf-window { grid-template-columns: 74px minmax(0, 1fr); }
+      #nick-financas-mockup .nf-sidebar { padding-inline: 10px; }
+      #nick-financas-mockup .nf-brand { justify-content: center; padding: 0; }
+      #nick-financas-mockup .nf-brand > span,
+      #nick-financas-mockup .nf-space,
+      #nick-financas-mockup .nf-nav button span,
+      #nick-financas-mockup .nf-user { display: none; }
+      #nick-financas-mockup .nf-nav button { justify-content: center; padding: 0; }
+      #nick-financas-mockup .nf-sidebar-footer { justify-content: center; padding-inline: 0; }
+      #nick-financas-mockup .nf-dashboard-grid { grid-template-columns: 1fr; }
+      #nick-financas-mockup .nf-metrics { grid-template-columns: repeat(2, 1fr); }
+      #nick-financas-mockup .nf-metric:nth-child(3) { border-left: 0; border-top: 1px solid var(--nf-border); }
+      #nick-financas-mockup .nf-metric:nth-child(4) { border-top: 1px solid var(--nf-border); }
+    }
+
+    @media (max-width: 520px) {
+      #nick-financas-mockup .nf-window { min-height: 680px; grid-template-columns: 1fr; }
+      #nick-financas-mockup .nf-sidebar { display: none; }
+      #nick-financas-mockup .nf-topbar { padding-inline: 14px; flex-wrap: wrap; }
+      #nick-financas-mockup .nf-content { padding: 18px 14px 22px; }
+      #nick-financas-mockup .nf-button-primary span { display: none; }
+      #nick-financas-mockup .nf-heading-row { align-items: start; flex-direction: column; }
+      #nick-financas-mockup .nf-chart { gap: 6px; }
+      #nick-financas-mockup .nf-bar { width: 8px; }
+    }
+  </style>
+
+  <section class="nf-window">
+    <aside class="nf-sidebar">
+      <div class="nf-brand">
+        <span class="nf-brand-mark"><i data-lucide="landmark" aria-hidden="true"></i></span>
+        <span>Nick Finanças</span>
+      </div>
+
+      <div class="nf-space">
+        <div class="nf-space-label">Espaço financeiro</div>
+        <select class="nf-space-select" aria-label="Espaço financeiro">
+          <option>Casa &amp; Futuro</option>
+          <option>Individual do Alex</option>
+        </select>
+      </div>
+
+      <nav class="nf-nav" aria-label="Seções do aplicativo">
+        <button class="is-active" type="button"><i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Visão geral</span></button>
+        <button type="button"><i data-lucide="arrow-left-right" aria-hidden="true"></i><span>Lançamentos</span></button>
+        <button type="button"><i data-lucide="wallet-cards" aria-hidden="true"></i><span>Contas e cartões</span></button>
+        <button type="button"><i data-lucide="piggy-bank" aria-hidden="true"></i><span>Reservas</span></button>
+        <button type="button"><i data-lucide="target" aria-hidden="true"></i><span>Objetivos</span></button>
+        <button type="button"><i data-lucide="chart-no-axes-combined" aria-hidden="true"></i><span>Relatórios</span></button>
+        <button type="button"><i data-lucide="users" aria-hidden="true"></i><span>Membros</span></button>
+      </nav>
+
+      <div class="nf-sidebar-footer">
+        <span class="nf-avatar">NC</span>
+        <div class="nf-user"><strong>Alex</strong><span>Administrador</span></div>
+      </div>
+    </aside>
+
+    <main class="nf-main">
+      <header class="nf-topbar">
+        <select class="nf-period" aria-label="Período">
+          <option>Setembro de 2026</option>
+          <option>Agosto de 2026</option>
+        </select>
+        <div class="nf-top-actions">
+          <button class="nf-button nf-button-primary" type="button"><i data-lucide="plus" aria-hidden="true"></i><span>Novo lançamento</span></button>
+          <button class="nf-profile" type="button" aria-label="Configurações"><i data-lucide="settings" aria-hidden="true"></i></button>
+        </div>
+      </header>
+
+      <div class="nf-content">
+        <div class="nf-heading-row">
+          <div>
+            <h1>Visão geral</h1>
+            <p class="nf-subtitle">Resumo do espaço Casa &amp; Futuro</p>
+          </div>
+          <div class="nf-sync"><span class="nf-sync-dot"></span>Sincronizado há 2 minutos</div>
+        </div>
+
+        <section class="nf-metrics" aria-label="Resumo mensal">
+          <div class="nf-metric"><div class="nf-metric-label">Saldo disponível</div><div class="nf-metric-value">R$ 6.480,20</div></div>
+          <div class="nf-metric"><div class="nf-metric-label">Receitas no mês</div><div class="nf-metric-value nf-positive">R$ 9.250,00</div></div>
+          <div class="nf-metric"><div class="nf-metric-label">Despesas no mês</div><div class="nf-metric-value nf-negative">R$ 5.730,45</div></div>
+          <div class="nf-metric"><div class="nf-metric-label">Total em reservas</div><div class="nf-metric-value">R$ 18.400,00</div></div>
+        </section>
+
+        <div class="nf-dashboard-grid">
+          <section class="nf-panel">
+            <div class="nf-panel-header"><h2>Receitas e despesas</h2><button class="nf-text-action" type="button">Ver relatório</button></div>
+            <div class="nf-chart" role="img" aria-label="Comparação de receitas e despesas dos últimos seis meses">
+              <div class="nf-month"><div class="nf-bars"><span class="nf-bar" style="height:58%"></span><span class="nf-bar out" style="height:46%"></span></div><span>Abr</span></div>
+              <div class="nf-month"><div class="nf-bars"><span class="nf-bar" style="height:72%"></span><span class="nf-bar out" style="height:55%"></span></div><span>Mai</span></div>
+              <div class="nf-month"><div class="nf-bars"><span class="nf-bar" style="height:64%"></span><span class="nf-bar out" style="height:61%"></span></div><span>Jun</span></div>
+              <div class="nf-month"><div class="nf-bars"><span class="nf-bar" style="height:83%"></span><span class="nf-bar out" style="height:51%"></span></div><span>Jul</span></div>
+              <div class="nf-month"><div class="nf-bars"><span class="nf-bar" style="height:76%"></span><span class="nf-bar out" style="height:67%"></span></div><span>Ago</span></div>
+              <div class="nf-month"><div class="nf-bars"><span class="nf-bar" style="height:92%"></span><span class="nf-bar out" style="height:57%"></span></div><span>Set</span></div>
+            </div>
+            <div class="nf-legend"><span><i class="nf-swatch"></i>Receitas</span><span><i class="nf-swatch out"></i>Despesas</span></div>
+          </section>
+
+          <div class="nf-side-stack">
+            <section class="nf-panel">
+              <div class="nf-panel-header"><h2>Reservas</h2><button class="nf-text-action" type="button">Gerenciar</button></div>
+              <div class="nf-reserve-total">R$ 18.400,00</div>
+              <div class="nf-reserve-caption">R$ 1.200 guardados neste mês</div>
+              <div class="nf-progress"><span style="width:68%"></span></div>
+            </section>
+
+            <section class="nf-panel">
+              <div class="nf-panel-header"><h2>Próximo objetivo</h2><button class="nf-text-action" type="button">Ver todos</button></div>
+              <div class="nf-goal-row">
+                <h3>Entrada do apartamento</h3>
+                <div class="nf-goal-meta"><span><strong>R$ 18.400</strong> de R$ 50.000</span><span>37%</span></div>
+                <div class="nf-progress"><span style="width:37%"></span></div>
+                <div class="nf-goal-meta"><span>Previsão</span><strong>2 anos e 3 meses</strong></div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <section class="nf-panel nf-transactions">
+          <div class="nf-panel-header"><h2>Últimos lançamentos</h2><button class="nf-text-action" type="button">Ver todos</button></div>
+          <div class="nf-transaction-list">
+            <div class="nf-transaction">
+              <span class="nf-transaction-icon"><i data-lucide="shopping-cart" aria-hidden="true"></i></span>
+              <div class="nf-transaction-name"><strong>Supermercado Central</strong><span>Alimentação · Cartão conjunto</span></div>
+              <div class="nf-transaction-value nf-negative">− R$ 286,40<span>Hoje, 18:32 · Alex</span></div>
+            </div>
+            <div class="nf-transaction">
+              <span class="nf-transaction-icon"><i data-lucide="briefcase-business" aria-hidden="true"></i></span>
+              <div class="nf-transaction-name"><strong>Salário</strong><span>Receita · Conta corrente</span></div>
+              <div class="nf-transaction-value nf-positive">+ R$ 4.850,00<span>20 set. · Ana</span></div>
+            </div>
+            <div class="nf-transaction">
+              <span class="nf-transaction-icon"><i data-lucide="piggy-bank" aria-hidden="true"></i></span>
+              <div class="nf-transaction-name"><strong>Reserva mensal</strong><span>Transferência · Reserva do casal</span></div>
+              <div class="nf-transaction-value">R$ 600,00<span>18 set. · Alex</span></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </section>
+
+  <script>
+    (() => {
+      const root = document.getElementById('nick-financas-mockup');
+      const state = { accent: '#16806a', compact: false, darkSidebar: true };
+      const render = () => {
+        root.style.setProperty('--nf-accent', state.accent);
+        root.querySelector('.nf-content').style.paddingBlock = state.compact ? '16px' : '24px 28px';
+        root.querySelector('.nf-sidebar').style.background = state.darkSidebar ? 'var(--nf-sidebar)' : 'light-dark(#2d4b42, #1c2925)';
+      };
+      render();
+      if (globalThis.Tweak) {
+        const tweak = new Tweak({ container: root, onChange: render });
+        tweak.addColorPicker(state, 'accent', { label: 'Cor principal', reference: '--nf-accent' });
+        tweak.addToggle(state, 'compact', { label: 'Layout compacto', reference: 'layout.compact' });
+        tweak.addToggle(state, 'darkSidebar', { label: 'Menu escuro', reference: 'sidebar.dark' });
+      }
+    })();
+  </script>
+</div>

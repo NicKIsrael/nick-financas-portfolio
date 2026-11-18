@@ -1,0 +1,1469 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:NickFinancas.Desktop.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
+        x:Name="RootWindow"
+        x:Class="NickFinancas.Desktop.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Icon="/Assets/nick-financas.ico"
+        Title="Nick FinanÃ§as"
+        Width="1280"
+        Height="800"
+        MinWidth="1024"
+        MinHeight="680"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource AppBackgroundBrush}">
+
+    <Window.Resources>
+        <DataTemplate x:Key="InvoiceRowTemplate" x:DataType="vm:CreditCardInvoiceViewModel">
+            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,14">
+                <Grid ColumnDefinitions="1.2*,*,*,*,*,Auto" ColumnSpacing="16">
+                    <StackPanel><TextBlock Text="{Binding CardName}" FontWeight="Medium" /><TextBlock Text="{Binding Reference}" Classes="muted" FontSize="11" /></StackPanel>
+                    <StackPanel Grid.Column="1"><TextBlock Text="Fatura" Classes="muted" FontSize="10" /><TextBlock Text="{Binding Total}" FontWeight="Medium" /></StackPanel>
+                    <StackPanel Grid.Column="2"><TextBlock Text="Pendente" Classes="muted" FontSize="10" /><TextBlock Text="{Binding Outstanding}" FontWeight="Medium" /></StackPanel>
+                    <StackPanel Grid.Column="3"><TextBlock Text="Limite disponivel" Classes="muted" FontSize="10" /><TextBlock Text="{Binding AvailableLimit}" FontWeight="Medium" /></StackPanel>
+                    <StackPanel Grid.Column="4"><TextBlock Text="Vencimento" Classes="muted" FontSize="10" /><TextBlock Text="{Binding DueDate}" /><TextBlock Text="{Binding Status}" Classes="muted" FontSize="10" /></StackPanel>
+                    <Button Grid.Column="5" Classes="primary" Content="Pagar fatura" IsVisible="{Binding CanPay}" Command="{Binding Owner.PayInvoiceCommand}" CommandParameter="{Binding}" />
+                </Grid>
+            </Border>
+        </DataTemplate>
+        <DataTemplate x:Key="CardLimitTemplate" x:DataType="vm:CreditCardLimitViewModel">
+            <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="9" Padding="16" Margin="0,8,0,4">
+                <StackPanel Spacing="13">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                        <Border Width="40" Height="40" CornerRadius="8" Background="{StaticResource SurfaceBrush}"><LucideIcon Kind="CreditCard" Size="19" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Medium" /><TextBlock Text="Cartao de credito" Classes="muted" FontSize="10" /></StackPanel>
+                        <Button Grid.Column="2" Classes="secondary" Content="{Binding AdjustmentButtonText}" Command="{Binding ToggleLimitAdjustmentCommand}" MinWidth="116" VerticalAlignment="Center" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+                        <StackPanel><TextBlock Text="Gasto" Classes="muted" FontSize="10" /><TextBlock Text="{Binding UsedLimitText}" FontWeight="Medium" Margin="0,3,0,0" /></StackPanel>
+                        <StackPanel Grid.Column="1"><TextBlock Text="Disponivel" Classes="muted" FontSize="10" /><TextBlock Text="{Binding AvailableLimitText}" Foreground="{StaticResource PositiveBrush}" FontWeight="Medium" Margin="0,3,0,0" /></StackPanel>
+                        <StackPanel Grid.Column="2"><TextBlock Text="Limite atual" Classes="muted" FontSize="10" /><TextBlock Text="{Binding CreditLimitText}" Foreground="{StaticResource AccentBrush}" FontWeight="Medium" Margin="0,3,0,0" /></StackPanel>
+                    </Grid>
+                    <StackPanel Spacing="6" IsVisible="{Binding !IsAdjusting}">
+                        <ProgressBar Minimum="0" Maximum="100" Value="{Binding UsagePercentage}" Height="9" Foreground="{StaticResource AccentBrush}" Background="{StaticResource SurfaceBrush}" />
+                        <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding UsageText}" Classes="muted" FontSize="10" /><TextBlock Grid.Column="1" Text="{Binding CreditLimitText, StringFormat='{}de {0} contratados'}" Classes="muted" FontSize="10" /></Grid>
+                    </StackPanel>
+                    <Border IsVisible="{Binding IsAdjusting}" Background="{StaticResource SurfaceBrush}" CornerRadius="7" Padding="12,10">
+                        <StackPanel Spacing="5">
+                            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Arraste para ajustar o limite" FontSize="11" FontWeight="Medium" /><TextBlock Grid.Column="1" Text="{Binding CreditLimitText}" Foreground="{StaticResource AccentBrush}" FontWeight="Medium" /></Grid>
+                            <Slider Classes="card-limit" Minimum="{Binding UsedLimit}" Maximum="{Binding MaximumLimit}" Value="{Binding CreditLimit, Mode=TwoWay}" SmallChange="1" LargeChange="50" Height="34" Foreground="{StaticResource AccentBrush}" Background="{StaticResource SurfaceAltBrush}" />
+                            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="O limite nao pode ficar abaixo do valor ja utilizado." Classes="muted" FontSize="10" /><TextBlock Grid.Column="1" Text="{Binding MaximumLimitText, StringFormat='{}Maximo: {0}'}" Classes="muted" FontSize="10" /></Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Window.Styles>
+        <Style Selector="NumericUpDown">
+            <Setter Property="ShowButtonSpinner" Value="False" />
+            <Setter Property="FormatString" Value="N2" />
+            <Setter Property="Background" Value="{StaticResource SurfaceAltBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        </Style>
+        <Style Selector="TextBox"><Setter Property="Background" Value="{StaticResource SurfaceAltBrush}" /><Setter Property="Foreground" Value="{StaticResource TextBrush}" /><Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" /></Style>
+        <Style Selector="ComboBox"><Setter Property="Background" Value="{StaticResource SurfaceAltBrush}" /><Setter Property="Foreground" Value="{StaticResource TextBrush}" /><Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" /></Style>
+        <Style Selector="ComboBox.sidebar-select"><Setter Property="Background" Value="{StaticResource SurfaceAltBrush}" /><Setter Property="Foreground" Value="#F3F7FF" /><Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" /></Style>
+        <Style Selector="ComboBox.sidebar-select /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="TextElement.Foreground" Value="#F3F7FF" /></Style>
+        <Style Selector="CalendarDatePicker"><Setter Property="Background" Value="{StaticResource SurfaceAltBrush}" /><Setter Property="Foreground" Value="{StaticResource TextBrush}" /><Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" /></Style>
+        <Style Selector="DatePicker"><Setter Property="Background" Value="{StaticResource SurfaceAltBrush}" /><Setter Property="Foreground" Value="{StaticResource TextBrush}" /></Style>
+        <Style Selector="TextBlock.positive"><Setter Property="Foreground" Value="{StaticResource PositiveBrush}" /></Style>
+        <Style Selector="TextBlock.negative"><Setter Property="Foreground" Value="{StaticResource NegativeBrush}" /></Style>
+        <Style Selector="TextBlock.balance-value">
+            <Setter Property="Margin" Value="0,7,0,0" />
+        </Style>
+        <Style Selector="TextBlock.balance-value.balance-increasing">
+            <Setter Property="Foreground" Value="{StaticResource PositiveBrush}" />
+        </Style>
+        <Style Selector="TextBlock.balance-value.balance-decreasing">
+            <Setter Property="Foreground" Value="{StaticResource NegativeBrush}" />
+        </Style>
+        <Style Selector="Border.goal-card">
+            <Setter Property="Background" Value="{StaticResource SurfaceAltBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="Padding" Value="16" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>
+        <Style Selector="Border.goal-card.primary">
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <Style Selector="Border.reserve-card">
+            <Setter Property="Background" Value="{StaticResource SurfaceAltBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="Padding" Value="14" />
+            <Setter Property="Margin" Value="0,0,0,9" />
+        </Style>
+        <Style Selector="Border.credit-card-entry">
+            <Setter Property="Background" Value="{StaticResource SurfaceAltBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="Padding" Value="14" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+        <Style Selector="Border.member-card">
+            <Setter Property="Background" Value="{StaticResource SurfaceAltBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="14" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>
+        <Style Selector="Slider.card-limit /template/ Thumb">
+            <Setter Property="Width" Value="20" />
+            <Setter Property="Height" Value="20" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+        </Style>
+        <Style Selector="Border.collapsible-card">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="ClipToBounds" Value="True" />
+        </Style>
+        <Style Selector="Button.collapse-header">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="MinHeight" Value="66" />
+            <Setter Property="Padding" Value="18,12" />
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="8" />
+        </Style>
+        <Style Selector="Button.collapse-header:pointerover">
+            <Setter Property="Background" Value="{StaticResource SurfaceAltBrush}" />
+        </Style>
+        <Style Selector="Button.collapse-header.expanded">
+            <Setter Property="Background" Value="{StaticResource SurfaceAltBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+            <Setter Property="CornerRadius" Value="8,8,0,0" />
+        </Style>
+        <Style Selector="Border.collapsible-content">
+            <Setter Property="MaxHeight" Value="0" />
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="Padding" Value="18,0" />
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="0,1,0,0" />
+            <Setter Property="RenderTransform" Value="translateY(-10px)" />
+            <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="Transitions"><Transitions><DoubleTransition Property="MaxHeight" Duration="0:0:0.28" /><DoubleTransition Property="Opacity" Duration="0:0:0.2" /><ThicknessTransition Property="Padding" Duration="0:0:0.28" /><TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.28" /></Transitions></Setter>
+        </Style>
+        <Style Selector="Border.collapsible-content.expanded">
+            <Setter Property="MaxHeight" Value="900" />
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="Padding" Value="18,14,18,18" />
+            <Setter Property="RenderTransform" Value="translateY(0px)" />
+        </Style>
+        <Style Selector="Button.calendar-day">
+            <Setter Property="Height" Value="108" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="9" />
+            <Setter Property="Margin" Value="3" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+        </Style>
+        <Style Selector="Button.calendar-day:pointerover"><Setter Property="Background" Value="{StaticResource SurfaceAltBrush}" /><Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" /></Style>
+        <Style Selector="Button.calendar-day.today"><Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" /><Setter Property="BorderThickness" Value="2" /><Setter Property="Background" Value="{StaticResource SurfaceAltBrush}" /></Style>
+        <Style Selector="Button.calendar-day.has-events"><Setter Property="Foreground" Value="{StaticResource AccentBrush}" /></Style>
+        <Style Selector="Button">
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.16" />
+                    <BrushTransition Property="Foreground" Duration="0:0:0.16" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.11" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button:pointerover">
+            <Setter Property="Background" Value="{StaticResource SurfaceAltBrush}" />
+        </Style>
+        <Style Selector="Button:pressed">
+            <Setter Property="RenderTransform" Value="scale(0.98)" />
+        </Style>
+        <Style Selector="Button.nav-item">
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="Margin" Value="0,2" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#A7B7CC" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="Button.nav-item:pointerover">
+            <Setter Property="Background" Value="{StaticResource SurfaceAltBrush}" />
+            <Setter Property="Foreground" Value="#F3F7FF" />
+            <Setter Property="RenderTransform" Value="translateX(3px)" />
+        </Style>
+        <Style Selector="Button.nav-item.active">
+            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Foreground" Value="#F3F7FF" />
+        </Style>
+        <Style Selector="Button.primary">
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="Button.primary:pointerover">
+            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+            <Setter Property="RenderTransform" Value="scale(1.02)" />
+        </Style>
+        <Style Selector="Button.primary:pressed">
+            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+            <Setter Property="RenderTransform" Value="scale(0.98)" />
+        </Style>
+        <Style Selector="Button.secondary">
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="CornerRadius" Value="7" />
+            <Setter Property="Background" Value="{StaticResource SurfaceAltBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Button.secondary:pointerover">
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+        </Style>
+        <Style Selector="Button.theme-toggle">
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Padding" Value="11,0" />
+            <Setter Property="CornerRadius" Value="7" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="Button.theme-toggle:pointerover">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+        </Style>
+        <Style Selector="Button.icon-button">
+            <Setter Property="Width" Value="38" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Button.icon-button:pointerover">
+            <Setter Property="Background" Value="{StaticResource SurfaceAltBrush}" />
+            <Setter Property="RenderTransform" Value="scale(1.05)" />
+        </Style>
+        <Style Selector="Button.danger">
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Background" Value="{StaticResource NegativeBrush}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="Button.danger:pointerover">
+            <Setter Property="Background" Value="#CD5A5A" />
+            <Setter Property="RenderTransform" Value="scale(1.02)" />
+        </Style>
+        <Style Selector="Button.text-action">
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style Selector="Border.panel">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="18" />
+        </Style>
+        <Style Selector="TextBlock.muted">
+            <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+        </Style>
+        <Style Selector="TextBlock.section-title">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="Medium" />
+        </Style>
+    </Window.Styles>
+
+    <Grid ColumnDefinitions="230,*">
+        <Border Grid.Column="0" Background="{StaticResource SidebarBrush}" Padding="14,20,14,14">
+            <Grid RowDefinitions="Auto,Auto,*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="8,0,8,20">
+                    <Image Width="34" Height="34" Source="/Assets/nick-financas-logo.png" Stretch="Uniform" />
+                    <TextBlock Text="Nick FinanÃ§as" Foreground="#F3F7FF" FontWeight="Medium" FontSize="12"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Spacing="6" Margin="0,0,0,18">
+                    <TextBlock Text="Espaco financeiro" Foreground="#A7B7CC" FontSize="12" Margin="8,0" />
+                    <ComboBox Classes="sidebar-select" ItemsSource="{Binding Spaces}"
+                              SelectedValueBinding="{Binding Id}"
+                              SelectedValue="{Binding SelectedSpaceId}"
+                              HorizontalAlignment="Stretch"
+                              MinWidth="180"
+                              Height="42"
+                              Padding="10,0"
+                              Foreground="#F3F7FF"
+                              CornerRadius="6" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="2">
+                    <Button Classes="nav-item" Classes.active="{Binding IsOverviewPage}" Command="{Binding NavigateCommand}" CommandParameter="Overview">
+                        <StackPanel Orientation="Horizontal" Spacing="11"><LucideIcon Kind="LayoutDashboard" Size="17" /><TextBlock Text="Visao geral" Foreground="{Binding $parent[Button].Foreground}" /></StackPanel>
+                    </Button>
+                    <Button Classes="nav-item" Classes.active="{Binding IsTransactionsPage}" Command="{Binding NavigateCommand}" CommandParameter="Transactions">
+                        <StackPanel Orientation="Horizontal" Spacing="11"><LucideIcon Kind="ArrowLeftRight" Size="17" /><TextBlock Text="Lancamentos" Foreground="{Binding $parent[Button].Foreground}" /></StackPanel>
+                    </Button>
+                    <Button Classes="nav-item" Classes.active="{Binding IsPayablesPage}" Command="{Binding NavigateCommand}" CommandParameter="Payables">
+                        <StackPanel Orientation="Horizontal" Spacing="11"><LucideIcon Kind="CalendarClock" Size="17" /><TextBlock Text="Pendencias" Foreground="{Binding $parent[Button].Foreground}" /></StackPanel>
+                    </Button>
+                    <Button Classes="nav-item" Classes.active="{Binding IsCalendarPage}" Command="{Binding NavigateCommand}" CommandParameter="Calendar">
+                        <StackPanel Orientation="Horizontal" Spacing="11"><LucideIcon Kind="CalendarDays" Size="17" /><TextBlock Text="Calendario" Foreground="{Binding $parent[Button].Foreground}" /></StackPanel>
+                    </Button>
+                    <Button Classes="nav-item" Classes.active="{Binding IsPlanningPage}" Command="{Binding NavigateCommand}" CommandParameter="Planning">
+                        <StackPanel Orientation="Horizontal" Spacing="11"><LucideIcon Kind="ChartSpline" Size="17" /><TextBlock Text="Planejamento" Foreground="{Binding $parent[Button].Foreground}" /></StackPanel>
+                    </Button>
+                    <Button Classes="nav-item" Classes.active="{Binding IsAccountsPage}" Command="{Binding NavigateCommand}" CommandParameter="Accounts">
+                        <StackPanel Orientation="Horizontal" Spacing="11"><LucideIcon Kind="WalletCards" Size="17" /><TextBlock Text="Contas e cartoes" Foreground="{Binding $parent[Button].Foreground}" /></StackPanel>
+                    </Button>
+                    <Button Classes="nav-item" Classes.active="{Binding IsReservesPage}" Command="{Binding NavigateCommand}" CommandParameter="Reserves">
+                        <StackPanel Orientation="Horizontal" Spacing="11"><LucideIcon Kind="PiggyBank" Size="17" /><TextBlock Text="Reservas" Foreground="{Binding $parent[Button].Foreground}" /></StackPanel>
+                    </Button>
+                    <Button Classes="nav-item" Classes.active="{Binding IsGoalsPage}" Command="{Binding NavigateCommand}" CommandParameter="Goals">
+                        <StackPanel Orientation="Horizontal" Spacing="11"><LucideIcon Kind="Target" Size="17" /><TextBlock Text="Objetivos" Foreground="{Binding $parent[Button].Foreground}" /></StackPanel>
+                    </Button>
+                    <Button Classes="nav-item" Classes.active="{Binding IsReportsPage}" Command="{Binding NavigateCommand}" CommandParameter="Reports">
+                        <StackPanel Orientation="Horizontal" Spacing="11"><LucideIcon Kind="ChartNoAxesCombined" Size="17" /><TextBlock Text="Relatorios" Foreground="{Binding $parent[Button].Foreground}" /></StackPanel>
+                    </Button>
+                    <Button Classes="nav-item" Classes.active="{Binding IsMembersPage}" Command="{Binding NavigateCommand}" CommandParameter="Members">
+                        <StackPanel Orientation="Horizontal" Spacing="11"><LucideIcon Kind="Users" Size="17" /><TextBlock Text="Membros" Foreground="{Binding $parent[Button].Foreground}" /></StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <Border Grid.Row="3" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="8,12,8,2">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <StackPanel Spacing="3" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding AuthenticatedUserName}" Foreground="#F3F7FF" FontWeight="Medium" FontSize="12" />
+                            <TextBlock Text="{Binding ActivePermissionText}" FontSize="10" Foreground="#A7B7CC" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="icon-button" Command="{Binding LogoutCommand}" ToolTip.Tip="Sair da conta"><LucideIcon Kind="LogOut" Size="16" /></Button>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Column="1" RowDefinitions="68,*">
+            <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="26,12">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <ComboBox Grid.Column="0" ItemsSource="{Binding Periods}" SelectedItem="{Binding SelectedPeriod}"
+                              MinWidth="180" Height="38" CornerRadius="6" />
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="9">
+                        <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="9" Padding="2">
+                            <StackPanel Orientation="Horizontal" Spacing="2">
+                                <Button Classes="theme-toggle" Command="{Binding ToggleAccentCommand}" ToolTip.Tip="Alternar entre azul e verde"><StackPanel Orientation="Horizontal" Spacing="7"><LucideIcon Kind="Palette" Size="16" Foreground="{StaticResource AccentBrush}" /><TextBlock Text="{Binding AccentButtonText}" Foreground="{Binding $parent[Button].Foreground}" /></StackPanel></Button>
+                                <Border Width="1" Margin="0,7" Background="{StaticResource BorderBrush}" />
+                                <Button Classes="theme-toggle" Command="{Binding ToggleThemeCommand}" ToolTip.Tip="Alternar entre modo claro e escuro"><StackPanel Orientation="Horizontal" Spacing="7"><Grid><LucideIcon Kind="Moon" Size="16" Foreground="{StaticResource AccentBrush}" IsVisible="{Binding IsDarkTheme}" /><LucideIcon Kind="Sun" Size="16" Foreground="{StaticResource AccentBrush}" IsVisible="{Binding !IsDarkTheme}" /></Grid><TextBlock Text="{Binding ThemeButtonText}" Foreground="{Binding $parent[Button].Foreground}" /></StackPanel></Button>
+                            </StackPanel>
+                        </Border>
+                        <Button Classes="primary" Command="{Binding OpenTransactionFormCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"><LucideIcon Kind="Plus" Size="17" VerticalAlignment="Center" /><TextBlock Text="Novo lancamento" Foreground="White" VerticalAlignment="Center" /></StackPanel>
+                        </Button>
+                        <Button Classes="icon-button" Command="{Binding OpenSettingsCommand}" IsEnabled="{Binding IsActiveAdministrator}" ToolTip.Tip="Gerenciar contas e categorias"><LucideIcon Kind="Settings" Size="17" /></Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <ScrollViewer Grid.Row="1" IsVisible="{Binding IsOverviewPage}">
+                <StackPanel Margin="26,24,26,28" Spacing="16">
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+                        <StackPanel>
+                            <TextBlock Text="Visao geral" FontSize="23" FontWeight="Medium" />
+                            <TextBlock Text="{Binding SelectedSpace.Name, StringFormat='{}Resumo do espaco {0}'}" Classes="muted" FontSize="13" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="7" VerticalAlignment="Bottom" Margin="0,0,0,3">
+                            <Ellipse Width="8" Height="8" Fill="{StaticResource PositiveBrush}" />
+                            <TextBlock Text="Dados locais atualizados" Classes="muted" FontSize="12" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8">
+                        <Grid ColumnDefinitions="*,*,*,*">
+                            <StackPanel Grid.Column="0" Margin="17,16"><TextBlock Text="Saldo disponivel" Classes="muted" FontSize="12" /><TextBlock Text="{Binding AvailableBalanceText}" Classes="balance-value" Classes.balance-increasing="{Binding IsBalanceIncreasing}" Classes.balance-decreasing="{Binding IsBalanceDecreasing}" Opacity="{Binding BalanceAnimationOpacity}" Margin="{Binding BalanceAnimationMargin}" FontSize="20" FontWeight="Medium"><TextBlock.Transitions><Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.18" /><ThicknessTransition Property="Margin" Duration="0:0:0.18" /></Transitions></TextBlock.Transitions></TextBlock></StackPanel>
+                            <Border Grid.Column="1" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0"><StackPanel Margin="17,16"><TextBlock Text="Receitas no mes" Classes="muted" FontSize="12" /><TextBlock Text="{Binding MonthlyIncomeText}" Foreground="{StaticResource PositiveBrush}" FontSize="20" FontWeight="Medium" Margin="0,7,0,0" /></StackPanel></Border>
+                            <Border Grid.Column="2" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0"><StackPanel Margin="17,16"><TextBlock Text="Despesas no mes" Classes="muted" FontSize="12" /><TextBlock Text="{Binding MonthlyExpenseText}" Foreground="{StaticResource NegativeBrush}" FontSize="20" FontWeight="Medium" Margin="0,7,0,0" /></StackPanel></Border>
+                            <Border Grid.Column="3" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0"><StackPanel Margin="17,16"><TextBlock Text="Total em reservas" Classes="muted" FontSize="12" /><TextBlock Text="{Binding TotalReservedText}" FontSize="20" FontWeight="Medium" Margin="0,7,0,0" /></StackPanel></Border>
+                        </Grid>
+                    </Border>
+
+                    <Border Classes="panel collapsible-card">
+                        <StackPanel>
+                            <Button Classes="collapse-header" Classes.expanded="{Binding IsOverviewPayablesExpanded}" Command="{Binding ToggleOverviewPayablesCommand}">
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12"><Border Width="38" Height="38" CornerRadius="8" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="CalendarClock" Size="18" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><StackPanel Grid.Column="1"><TextBlock Text="Pendencias do mes" FontWeight="Medium" /><TextBlock Classes="muted" FontSize="11"><Run Text="{Binding PendingPayablesCount}" /><Run Text=" - " /><Run Text="{Binding PendingPayablesTotal}" /><Run Text=" a pagar" /></TextBlock></StackPanel><Grid Grid.Column="2"><LucideIcon Kind="ChevronDown" Size="19" IsVisible="{Binding !IsOverviewPayablesExpanded}" /><LucideIcon Kind="ChevronUp" Size="19" Foreground="{StaticResource AccentBrush}" IsVisible="{Binding IsOverviewPayablesExpanded}" /></Grid></Grid>
+                            </Button>
+                            <Border Classes="collapsible-content" Classes.expanded="{Binding IsOverviewPayablesExpanded}" IsHitTestVisible="{Binding IsOverviewPayablesExpanded}">
+                                <StackPanel Spacing="9"><StackPanel IsVisible="{Binding IsOverviewPendingListEmpty}" HorizontalAlignment="Center" Margin="0,12" Spacing="5"><LucideIcon Kind="CircleCheck" Size="22" Foreground="{StaticResource PositiveBrush}" HorizontalAlignment="Center" /><TextBlock Text="Nenhuma pendencia neste periodo" FontWeight="Medium" /><TextBlock Text="Quando houver contas ou faturas em aberto, elas aparecerao aqui." Classes="muted" FontSize="11" /></StackPanel><ItemsControl ItemsSource="{Binding OverviewPendingPayables}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:PayableViewModel"><Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,8"><Grid ColumnDefinitions="90,*,Auto"><TextBlock Text="{Binding DueDateText}" Classes="muted" FontSize="11" /><TextBlock Grid.Column="1" Text="{Binding Description}" /><TextBlock Grid.Column="2" Text="{Binding AmountText}" FontWeight="Medium" /></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><ItemsControl ItemsSource="{Binding PendingCreditCardInvoices}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:CreditCardInvoiceViewModel"><Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,8"><Grid ColumnDefinitions="90,*,Auto"><TextBlock Text="{Binding DueDate}" Classes="muted" FontSize="11" /><StackPanel Grid.Column="1"><TextBlock Text="{Binding CardName, StringFormat='{}Fatura {0}'}" /><TextBlock Text="{Binding Reference}" Classes="muted" FontSize="10" /></StackPanel><TextBlock Grid.Column="2" Text="{Binding Outstanding}" FontWeight="Medium" /></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><Button Classes="text-action" Content="Abrir todas as pendencias" Command="{Binding NavigateCommand}" CommandParameter="Payables" HorizontalAlignment="Left" /></StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Classes="panel collapsible-card" IsVisible="{Binding HasCreditCards}">
+                        <StackPanel><Button Classes="collapse-header" Classes.expanded="{Binding IsOverviewCardLimitsExpanded}" Command="{Binding ToggleOverviewCardLimitsCommand}"><Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12"><Border Width="38" Height="38" CornerRadius="8" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="CreditCard" Size="18" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><StackPanel Grid.Column="1"><TextBlock Text="Limites dos cartoes" FontWeight="Medium" /><TextBlock Text="Consulte o uso e o valor disponivel de cada cartao" Classes="muted" FontSize="11" /></StackPanel><Grid Grid.Column="2"><LucideIcon Kind="ChevronDown" Size="19" IsVisible="{Binding !IsOverviewCardLimitsExpanded}" /><LucideIcon Kind="ChevronUp" Size="19" Foreground="{StaticResource AccentBrush}" IsVisible="{Binding IsOverviewCardLimitsExpanded}" /></Grid></Grid></Button><Border Classes="collapsible-content" Classes.expanded="{Binding IsOverviewCardLimitsExpanded}" IsHitTestVisible="{Binding IsOverviewCardLimitsExpanded}"><StackPanel><TextBlock Text="Compras no credito usam o limite; o saldo da conta muda somente ao pagar a fatura." Classes="muted" FontSize="11" Margin="0,0,0,4" /><ItemsControl ItemsSource="{Binding CreditCardLimits}" ItemTemplate="{StaticResource CardLimitTemplate}" /><Button Classes="text-action" Content="Ver faturas" Command="{Binding NavigateCommand}" CommandParameter="Accounts" HorizontalAlignment="Left" /><TextBlock Text="{Binding CardNotice}" Foreground="{StaticResource PositiveBrush}" FontSize="11" /><TextBlock Text="{Binding CardError}" Foreground="{StaticResource NegativeBrush}" FontSize="11" /></StackPanel></Border></StackPanel>
+                    </Border>
+
+                    <Grid ColumnDefinitions="1.55*,0.85*" ColumnSpacing="16">
+                        <Border Grid.Column="0" Classes="panel">
+                            <Grid RowDefinitions="Auto,180,Auto">
+                                <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Receitas e despesas" Classes="section-title" /><Button Grid.Column="1" Classes="text-action" Content="Ver relatorio" Command="{Binding NavigateCommand}" CommandParameter="Reports" /></Grid>
+                                <ItemsControl Grid.Row="1" ItemsSource="{Binding MonthlyReports}" Margin="0,16,0,0"><ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:MonthlyReportViewModel"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Bottom" Spacing="8"><Grid Height="135" ColumnDefinitions="12,12" ColumnSpacing="5"><Border Height="{Binding IncomeHeight}" Background="{StaticResource AccentBrush}" CornerRadius="3,3,0,0" VerticalAlignment="Bottom" /><Border Grid.Column="1" Height="{Binding ExpenseHeight}" Background="{StaticResource ChartExpenseBrush}" CornerRadius="3,3,0,0" VerticalAlignment="Bottom" /></Grid><TextBlock Text="{Binding Month}" Classes="muted" FontSize="11" HorizontalAlignment="Center" /></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="18" Margin="0,13,0,0">
+                                    <StackPanel Orientation="Horizontal" Spacing="6"><Border Width="8" Height="8" CornerRadius="2" Background="{StaticResource AccentBrush}" /><TextBlock Text="Receitas" Classes="muted" FontSize="11" /></StackPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="6"><Border Width="8" Height="8" CornerRadius="2" Background="{StaticResource ChartExpenseBrush}" /><TextBlock Text="Despesas" Classes="muted" FontSize="11" /></StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <StackPanel Grid.Column="1" Spacing="16">
+                            <Border Classes="panel">
+                                <StackPanel Spacing="4">
+                                    <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Reservas" Classes="section-title" /><Button Grid.Column="1" Classes="text-action" Content="Gerenciar" Command="{Binding NavigateCommand}" CommandParameter="Reserves" /></Grid>
+                                    <TextBlock Text="{Binding TotalReservedText}" FontSize="22" FontWeight="Medium" Margin="0,10,0,0" />
+                                    <TextBlock Text="Dinheiro separado do saldo disponivel" Classes="muted" FontSize="12" />
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="panel">
+                                <StackPanel Spacing="8">
+                                    <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Objetivo principal" Classes="section-title" /><Button Grid.Column="1" Classes="text-action" Content="Ver todos" Command="{Binding NavigateCommand}" CommandParameter="Goals" /></Grid>
+                                    <TextBlock Text="{Binding NextGoalName}" FontSize="13" FontWeight="Medium" Margin="0,6,0,0" />
+                                    <TextBlock Text="{Binding NextGoalProgressText}" Classes="muted" FontSize="11" />
+                                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding NextGoalProgress}" Height="7" Foreground="{StaticResource AccentBrush}" Background="{StaticResource SurfaceAltBrush}" />
+                                    <TextBlock Text="{Binding NextGoalForecastText}" Classes="muted" FontSize="11" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <Border Classes="panel">
+                        <StackPanel>
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6"><TextBlock Text="Ultimos lancamentos" Classes="section-title" /><Button Grid.Column="1" Classes="text-action" Content="Ver todos" Command="{Binding NavigateCommand}" CommandParameter="Transactions" /></Grid>
+                            <ItemsControl ItemsSource="{Binding RecentTransactions}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:RecentTransactionViewModel">
+                                        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,11">
+                                            <Grid ColumnDefinitions="34,*,Auto" ColumnSpacing="11">
+                                                <Border Width="32" Height="32" CornerRadius="7" Background="{StaticResource SurfaceAltBrush}">
+                                                    <LucideIcon Kind="CircleDollarSign" Size="15" Foreground="{StaticResource MutedTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" />
+                                                    <TextBlock Text="{Binding Description}" Classes="muted" FontSize="11" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                                    <TextBlock Text="{Binding Amount}" Classes.positive="{Binding IsPositive}" Classes.negative="{Binding IsNegative}" FontSize="13" FontWeight="Medium" HorizontalAlignment="Right" />
+                                                    <TextBlock Text="{Binding Metadata}" Classes="muted" FontSize="10" HorizontalAlignment="Right" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <ScrollViewer Grid.Row="1" IsVisible="{Binding IsTransactionsPage}">
+                <StackPanel Margin="26,24,26,28" Spacing="16">
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="10">
+                        <StackPanel>
+                            <TextBlock Text="Lancamentos" FontSize="23" FontWeight="Medium" />
+                            <TextBlock Text="Consulte, filtre e gerencie as movimentacoes do periodo" Classes="muted" FontSize="13" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="secondary" Command="{Binding ExportTransactionsCommand}" MinWidth="132">
+                            <StackPanel Orientation="Horizontal" Spacing="8"><LucideIcon Kind="Download" Size="17" /><TextBlock Text="Exportar CSV" /></StackPanel>
+                        </Button>
+                        <Button Grid.Column="2" Classes="secondary" Click="SelectBankCsv_Click" MinWidth="145">
+                            <StackPanel Orientation="Horizontal" Spacing="8"><LucideIcon Kind="Upload" Size="17" /><TextBlock Text="Importar Nubank" /></StackPanel>
+                        </Button>
+                        <Button Grid.Column="3" Classes="primary" Command="{Binding OpenTransactionFormCommand}" MinWidth="158">
+                            <StackPanel Orientation="Horizontal" Spacing="8"><LucideIcon Kind="Plus" Size="17" /><TextBlock Text="Novo lancamento" Foreground="White" /></StackPanel>
+                        </Button>
+                    </Grid>
+                    <TextBlock Text="{Binding LedgerExportNotice}" Foreground="{StaticResource PositiveBrush}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding LedgerExportError}" Foreground="{StaticResource NegativeBrush}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding LedgerSaveNotice}" Foreground="{StaticResource PositiveBrush}" TextWrapping="Wrap" />
+
+                    <Border Classes="panel" IsVisible="{Binding IsBankImportOpen}">
+                        <StackPanel Spacing="12">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                <StackPanel><TextBlock Text="Importar extrato Nubank" FontSize="17" FontWeight="SemiBold" /><TextBlock Text="{Binding ImportFileName}" Classes="muted" FontSize="12" /></StackPanel>
+                                <Button Grid.Column="1" Content="Fechar" Command="{Binding CloseBankImportCommand}" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <ComboBox ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedImportAccount}" PlaceholderText="Conta do extrato" Height="40" />
+                                <Button Grid.Column="1" Content="Atualizar prévia" Command="{Binding RefreshBankImportPreviewCommand}" IsEnabled="{Binding !IsBankImportBusy}" />
+                            </Grid>
+                            <TextBlock Text="{Binding BankImportNotice}" Classes="muted" FontSize="12" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding BankImportError}" Foreground="{StaticResource NegativeBrush}" FontSize="12" TextWrapping="Wrap" />
+                            <TextBlock Text="Linhas de cartão e fatura ficam fora da seleção automática; confira-as separadamente." Classes="muted" FontSize="12" TextWrapping="Wrap" />
+                            <ScrollViewer MaxHeight="340">
+                                <ItemsControl ItemsSource="{Binding BankImportRows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:BankImportRowViewModel">
+                                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="6,9">
+                                                <Grid ColumnDefinitions="Auto,90,*,110,170" ColumnSpacing="10">
+                                                    <CheckBox IsChecked="{Binding IsIncluded}" IsEnabled="{Binding CanImport}" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding DateText}" VerticalAlignment="Center" />
+                                                    <StackPanel Grid.Column="2" Spacing="2"><TextBlock Text="{Binding Description}" TextWrapping="Wrap" FontSize="12" /><TextBlock Text="{Binding Note}" Classes="muted" FontSize="10" /></StackPanel>
+                                                    <TextBlock Grid.Column="3" Text="{Binding AmountText}" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                                                    <ComboBox Grid.Column="4" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" IsEnabled="{Binding CanImport}" VerticalAlignment="Center" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                            <Button Classes="primary" Content="Confirmar importação" Command="{Binding ConfirmBankImportCommand}" IsEnabled="{Binding !IsBankImportBusy}" HorizontalAlignment="Right" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Classes="panel">
+                        <Grid ColumnDefinitions="1.5*,*,*,*" ColumnSpacing="12">
+                            <TextBox Text="{Binding LedgerSearchText}" PlaceholderText="Buscar por descricao" Height="40" />
+                            <ComboBox Grid.Column="1" ItemsSource="{Binding LedgerTypeFilters}" SelectedItem="{Binding SelectedLedgerType}" Height="40" />
+                            <ComboBox Grid.Column="2" ItemsSource="{Binding LedgerAccountFilters}" SelectedItem="{Binding SelectedLedgerAccount}" Height="40" />
+                            <ComboBox Grid.Column="3" ItemsSource="{Binding LedgerCategoryFilters}" SelectedItem="{Binding SelectedLedgerCategory}" Height="40" />
+                        </Grid>
+                    </Border>
+                    <Border Classes="panel" Padding="14,10" IsVisible="{Binding IsLedgerContextVisible}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <LucideIcon Kind="Search" Size="15" Foreground="{StaticResource AccentBrush}" />
+                            <TextBlock Text="{Binding LedgerContextText}" Foreground="{StaticResource AccentBrush}" FontWeight="Medium" />
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Text="{Binding LedgerNotice}" Foreground="{StaticResource PositiveBrush}" FontSize="12" />
+                    <TextBlock Text="{Binding LedgerError}" Foreground="{StaticResource NegativeBrush}" FontSize="12" TextWrapping="Wrap" />
+                    <Border Classes="panel" Padding="0">
+                        <StackPanel>
+                            <Grid ColumnDefinitions="110,*,150,150,130,84" Margin="18,14">
+                                <TextBlock Text="Data" Classes="muted" FontSize="11" />
+                                <TextBlock Grid.Column="1" Text="Descricao" Classes="muted" FontSize="11" />
+                                <TextBlock Grid.Column="2" Text="Categoria" Classes="muted" FontSize="11" />
+                                <TextBlock Grid.Column="3" Text="Conta" Classes="muted" FontSize="11" />
+                                <TextBlock Grid.Column="4" Text="Valor" Classes="muted" FontSize="11" HorizontalAlignment="Right" />
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding FilteredTransactions}" IsVisible="{Binding HasFilteredTransactions}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:LedgerTransactionViewModel">
+                                        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="18,12">
+                                            <Grid ColumnDefinitions="110,*,150,150,130,84" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding DateText}" FontSize="12" VerticalAlignment="Center" />
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Description}" FontSize="13" FontWeight="Medium" />
+                                                    <TextBlock Text="{Binding Metadata}" Classes="muted" FontSize="10" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="2" Text="{Binding CategoryName}" FontSize="12" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="3" Text="{Binding AccountName}" FontSize="12" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="4" Text="{Binding AmountText}" Classes.positive="{Binding IsPositive}" Classes.negative="{Binding IsNegative}" FontSize="13" FontWeight="Medium" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                                <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
+                                                    <Button Width="36" Height="32" Padding="0" Background="Transparent" BorderThickness="0" IsVisible="{Binding CanEdit}" ToolTip.Tip="Editar lancamento" Command="{Binding Owner.EditTransactionCommand}" CommandParameter="{Binding}"><LucideIcon Kind="Pencil" Size="15" /></Button>
+                                                    <Button Width="36" Height="32" Padding="0" Background="Transparent" BorderThickness="0" ToolTip.Tip="Excluir lancamento" Command="{Binding Owner.RequestDeleteTransactionCommand}" CommandParameter="{Binding}"><LucideIcon Kind="Trash" Size="15" /></Button>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <StackPanel IsVisible="{Binding IsFilteredTransactionListEmpty}" Margin="20,54" HorizontalAlignment="Center" Spacing="8">
+                                <LucideIcon Kind="ReceiptText" Size="28" Foreground="{StaticResource MutedTextBrush}" HorizontalAlignment="Center" />
+                                <TextBlock Text="Nenhum lancamento encontrado" FontWeight="Medium" HorizontalAlignment="Center" />
+                                <TextBlock Text="Ajuste os filtros ou registre uma nova movimentacao." Classes="muted" FontSize="12" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <ScrollViewer Grid.Row="1" IsVisible="{Binding IsPayablesPage}">
+                <StackPanel Margin="26,24,26,28" Spacing="16">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel>
+                            <TextBlock Text="Pendencias do mes" FontSize="23" FontWeight="Medium" />
+                            <TextBlock Text="Contas a pagar, vencimentos e recorrencias" Classes="muted" FontSize="13" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="primary" Content="Nova pendencia" Command="{Binding OpenPayableFormCommand}" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="16">
+                        <Border Classes="panel"><StackPanel><TextBlock Text="A pagar no periodo" Classes="muted" FontSize="11" /><TextBlock Text="{Binding PendingPayablesTotal}" FontSize="22" FontWeight="Medium" Margin="0,6,0,0" /></StackPanel></Border>
+                        <Border Grid.Column="1" Classes="panel"><StackPanel><TextBlock Text="Situacao" Classes="muted" FontSize="11" /><TextBlock Text="{Binding PendingPayablesCount}" FontSize="22" FontWeight="Medium" Margin="0,6,0,0" /></StackPanel></Border>
+                        <Border Grid.Column="2" Classes="panel"><StackPanel><TextBlock Text="Saldo disponivel" Classes="muted" FontSize="11" /><TextBlock Text="{Binding AvailableBalanceText}" FontSize="22" FontWeight="Medium" Margin="0,6,0,0" Foreground="{StaticResource AccentBrush}" /></StackPanel></Border>
+                    </Grid>
+                    <Border Classes="panel" BorderBrush="#D8A83E" IsVisible="{Binding HasDueAlerts}"><StackPanel Spacing="8"><Grid ColumnDefinitions="Auto,*" ColumnSpacing="10"><LucideIcon Kind="BellRing" Size="18" Foreground="#D8A83E" /><StackPanel Grid.Column="1"><TextBlock Text="Vencimentos proximos" FontWeight="Medium" /><TextBlock Text="{Binding DueAlertText}" Classes="muted" FontSize="11" /></StackPanel></Grid><ItemsControl ItemsSource="{Binding DueSoonPayables}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:PayableViewModel"><Grid ColumnDefinitions="90,*,Auto" Margin="0,4"><TextBlock Text="{Binding DueDateText}" Foreground="#D8A83E" /><TextBlock Grid.Column="1" Text="{Binding Description}" /><TextBlock Grid.Column="2" Text="{Binding AmountText}" FontWeight="Medium" /></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel></Border>
+                    <Border Classes="panel" IsVisible="{Binding HasCreditCards}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Faturas pendentes" Classes="section-title" />
+                            <TextBlock Text="As faturas aparecem aqui como compromissos do mes e continuam sendo despesas apenas na data de cada compra." Classes="muted" FontSize="11" TextWrapping="Wrap" />
+                            <ItemsControl ItemsSource="{Binding PendingCreditCardInvoices}" ItemTemplate="{StaticResource InvoiceRowTemplate}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="panel" IsVisible="{Binding HasInstallmentPlans}">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="Compras parceladas" Classes="section-title" />
+                            <TextBlock Text="Parcelas que ainda faltam pagar, inclusive nos proximos meses." Classes="muted" FontSize="11" />
+                            <ItemsControl ItemsSource="{Binding InstallmentPlans}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:InstallmentPlanViewModel">
+                                        <Grid ColumnDefinitions="*,145,125,100,116" ColumnSpacing="12" Margin="0,6">
+                                            <StackPanel><TextBlock Text="{Binding Description}" FontWeight="Medium" /><TextBlock Text="{Binding PaymentMethod}" Classes="muted" FontSize="10" /></StackPanel>
+                                            <TextBlock Grid.Column="1" Text="{Binding ProgressText}" VerticalAlignment="Center" FontSize="11" />
+                                            <TextBlock Grid.Column="2" Text="{Binding NextDueDateText}" VerticalAlignment="Center" FontSize="11" />
+                                            <TextBlock Grid.Column="3" Text="{Binding NextAmountText}" VerticalAlignment="Center" HorizontalAlignment="Right" FontWeight="Medium" />
+                                            <Button Grid.Column="4" Content="Excluir restantes" IsVisible="{Binding IsAccountPayable}" Command="{Binding Owner.RequestDeleteRemainingInstallmentsCommand}" CommandParameter="{Binding}" ToolTip.Tip="Excluir as parcelas ainda nao pagas" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="panel" Padding="0">
+                        <StackPanel>
+                            <Grid ColumnDefinitions="110,*,140,140,130,175" Margin="18,14">
+                                <TextBlock Text="Vencimento" Classes="muted" FontSize="11" />
+                                <TextBlock Grid.Column="1" Text="Descricao" Classes="muted" FontSize="11" />
+                                <TextBlock Grid.Column="2" Text="Categoria" Classes="muted" FontSize="11" />
+                                <TextBlock Grid.Column="3" Text="Conta" Classes="muted" FontSize="11" />
+                                <TextBlock Grid.Column="4" Text="Valor" Classes="muted" FontSize="11" HorizontalAlignment="Right" />
+                                <TextBlock Grid.Column="5" Text="Acoes" Classes="muted" FontSize="11" HorizontalAlignment="Right" />
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding Payables}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:PayableViewModel">
+                                        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="18,12">
+                                            <Grid ColumnDefinitions="110,*,140,140,130,175" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding DueDateText}" FontSize="12" />
+                                                <StackPanel Grid.Column="1"><TextBlock Text="{Binding Description}" FontWeight="Medium" /><TextBlock Text="{Binding Status}" Classes="muted" FontSize="10" /></StackPanel>
+                                                <TextBlock Grid.Column="2" Text="{Binding CategoryName}" FontSize="12" />
+                                                <TextBlock Grid.Column="3" Text="{Binding AccountName}" FontSize="12" />
+                                                <TextBlock Grid.Column="4" Text="{Binding AmountText}" FontWeight="Medium" HorizontalAlignment="Right" Margin="0,0,14,0" />
+                                                <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="5" HorizontalAlignment="Right">
+                                                    <Button Classes="primary" Width="78" Content="Pagar" IsVisible="{Binding CanPay}" Command="{Binding Owner.PayPayableCommand}" CommandParameter="{Binding}" />
+                                                    <Button Width="88" Height="34" Content="Excluir" Command="{Binding Owner.RequestDeletePayableCommand}" CommandParameter="{Binding}" ToolTip.Tip="Excluir pendencia" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <StackPanel IsVisible="{Binding IsPayableListEmpty}" Margin="20,50" HorizontalAlignment="Center" Spacing="7">
+                                <LucideIcon Kind="CalendarClock" Size="28" Foreground="{StaticResource MutedTextBrush}" HorizontalAlignment="Center" />
+                                <TextBlock Text="Nenhuma pendencia neste periodo" FontWeight="Medium" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="panel">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Pagamentos recorrentes" Classes="section-title" />
+                            <ItemsControl ItemsSource="{Binding RecurringPayables}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:RecurringPayableViewModel">
+                                        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,11">
+                                            <Grid ColumnDefinitions="*,150,150,40">
+                                                <StackPanel><TextBlock Text="{Binding Description}" FontWeight="Medium" /><TextBlock Text="{Binding ScheduleText}" Classes="muted" FontSize="10" /></StackPanel>
+                                                <TextBlock Grid.Column="1" Text="{Binding AccountName}" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="2" Text="{Binding AmountText}" FontWeight="Medium" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                                <Button Grid.Column="3" Width="34" Height="34" Padding="0" Background="Transparent" BorderThickness="0" ToolTip.Tip="Encerrar recorrencia" Command="{Binding Owner.RequestDeleteRecurringPayableCommand}" CommandParameter="{Binding}"><LucideIcon Kind="Trash" Size="15" /></Button>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Text="{Binding PayableNotice}" Foreground="{StaticResource PositiveBrush}" FontSize="12" />
+                    <TextBlock Text="{Binding PayableError}" Foreground="{StaticResource NegativeBrush}" FontSize="12" />
+                </StackPanel>
+            </ScrollViewer>
+
+            <ScrollViewer Grid.Row="1" IsVisible="{Binding IsCalendarPage}">
+                <StackPanel Margin="26,24,26,28" Spacing="16">
+                    <StackPanel><TextBlock Text="Calendario financeiro" FontSize="23" FontWeight="Medium" /><TextBlock Text="Vencimentos, pagamentos e movimentacoes do periodo selecionado" Classes="muted" FontSize="13" Margin="0,4,0,0" /></StackPanel>
+                    <Border Classes="panel"><StackPanel Spacing="10">
+                            <Grid ColumnDefinitions="*,*,*,*,*,*,*"><TextBlock Text="SEG" Classes="muted" FontSize="10" HorizontalAlignment="Center" /><TextBlock Grid.Column="1" Text="TER" Classes="muted" FontSize="10" HorizontalAlignment="Center" /><TextBlock Grid.Column="2" Text="QUA" Classes="muted" FontSize="10" HorizontalAlignment="Center" /><TextBlock Grid.Column="3" Text="QUI" Classes="muted" FontSize="10" HorizontalAlignment="Center" /><TextBlock Grid.Column="4" Text="SEX" Classes="muted" FontSize="10" HorizontalAlignment="Center" /><TextBlock Grid.Column="5" Text="SAB" Classes="muted" FontSize="10" HorizontalAlignment="Center" /><TextBlock Grid.Column="6" Text="DOM" Classes="muted" FontSize="10" HorizontalAlignment="Center" /></Grid>
+                            <ItemsControl ItemsSource="{Binding CalendarDays}">
+                                <ItemsControl.Styles>
+                                    <Style Selector="ContentPresenter">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                                    </Style>
+                                </ItemsControl.Styles>
+                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="7" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:CalendarDayViewModel"><Button Classes="calendar-day" Classes.today="{Binding IsToday}" Classes.has-events="{Binding HasEvents}" IsEnabled="{Binding IsEnabled}" Command="{Binding $parent[Window].DataContext.SelectCalendarDayCommand}" CommandParameter="{Binding}"><Grid RowDefinitions="Auto,*,Auto"><TextBlock Text="{Binding DayNumber}" FontSize="14" FontWeight="Medium" /><TextBlock Grid.Row="1" Text="{Binding EventPreviewText}" FontSize="9" Classes="muted" TextWrapping="Wrap" MaxLines="3" Margin="0,7,0,3" /><TextBlock Grid.Row="2" Text="{Binding EventCountText}" FontSize="9" Foreground="{StaticResource AccentBrush}" /></Grid></Button></DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                    </StackPanel></Border>
+                    <Border Classes="panel">
+                        <StackPanel Spacing="12">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                                <StackPanel><TextBlock Text="{Binding SelectedCalendarDateText}" Classes="section-title" TextWrapping="Wrap" /><TextBlock Text="{Binding SelectedCalendarSummaryText}" Classes="muted" FontSize="11" Margin="0,3,0,0" /></StackPanel>
+                                <Button Grid.Column="1" Classes="primary" Command="{Binding ScheduleFromCalendarCommand}"><StackPanel Orientation="Horizontal" Spacing="8"><LucideIcon Kind="CalendarPlus" Size="17" /><TextBlock Text="Agendar para este dia" Foreground="White" /></StackPanel></Button>
+                            </Grid>
+                            <Border Height="1" Background="{StaticResource BorderBrush}" />
+                            <ItemsControl ItemsSource="{Binding SelectedCalendarEvents}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:CalendarEventViewModel"><Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="2,12"><Grid ColumnDefinitions="150,*,180,120,110" ColumnSpacing="14" VerticalAlignment="Center"><TextBlock Text="{Binding Kind}" Foreground="{StaticResource AccentBrush}" FontWeight="Medium" /><StackPanel Grid.Column="1"><TextBlock Text="{Binding Description}" FontWeight="Medium" TextWrapping="Wrap" /><TextBlock Text="{Binding Details}" Classes="muted" FontSize="10" TextWrapping="Wrap" Margin="0,3,0,0" /></StackPanel><TextBlock Grid.Column="2" Text="{Binding StatusText}" Classes="muted" VerticalAlignment="Center" /><TextBlock Grid.Column="3" Text="{Binding AmountText}" Classes.positive="{Binding IsIncome}" Classes.negative="{Binding !IsIncome}" FontWeight="Medium" HorizontalAlignment="Right" VerticalAlignment="Center" /><LucideIcon Grid.Column="4" Kind="Clock3" Size="17" Foreground="{StaticResource MutedTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" IsVisible="{Binding IsPending}" /></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                            <StackPanel IsVisible="{Binding IsCalendarEventListEmpty}" HorizontalAlignment="Center" Margin="0,22" Spacing="6"><LucideIcon Kind="CalendarCheck" Size="26" Foreground="{StaticResource MutedTextBrush}" HorizontalAlignment="Center" /><TextBlock Text="Nenhum compromisso neste dia" Classes="muted" /></StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <ScrollViewer Grid.Row="1" IsVisible="{Binding IsPlanningPage}">
+                <StackPanel Margin="26,24,26,28" Spacing="16">
+                    <StackPanel><TextBlock Text="Planejamento financeiro" FontSize="23" FontWeight="Medium" /><TextBlock Text="Projecao dos proximos seis meses com base no historico e nos compromissos ja cadastrados" Classes="muted" FontSize="13" Margin="0,4,0,0" /></StackPanel>
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="16">
+                        <Border Classes="panel"><StackPanel Spacing="5"><TextBlock Text="Receita media considerada" Classes="muted" FontSize="11" /><TextBlock Text="{Binding ProjectionAverageIncomeText}" FontSize="22" FontWeight="Medium" Foreground="{StaticResource PositiveBrush}" /><TextBlock Text="Media dos meses com movimentacao" Classes="muted" FontSize="10" /></StackPanel></Border>
+                        <Border Grid.Column="1" Classes="panel"><StackPanel Spacing="5"><TextBlock Text="Despesa media considerada" Classes="muted" FontSize="11" /><TextBlock Text="{Binding ProjectionAverageExpenseText}" FontSize="22" FontWeight="Medium" Foreground="{StaticResource ChartExpenseBrush}" /><TextBlock Text="Antes de contas, faturas e aportes conhecidos" Classes="muted" FontSize="10" /></StackPanel></Border>
+                        <Border Grid.Column="2" Classes="panel" BorderBrush="{StaticResource AccentBrush}"><StackPanel Spacing="5"><TextBlock Text="Saldo ao final de seis meses" Classes="muted" FontSize="11" /><TextBlock Text="{Binding ProjectionEndingBalanceText}" FontSize="22" FontWeight="Medium" Foreground="{StaticResource AccentBrush}" /><TextBlock Text="{Binding ProjectionRiskText}" Classes="muted" FontSize="10" /></StackPanel></Border>
+                    </Grid>
+                    <Border Classes="panel" BorderBrush="#D8A83E" IsVisible="{Binding HasProjectionRisk}"><Grid ColumnDefinitions="Auto,*" ColumnSpacing="10"><LucideIcon Kind="TriangleAlert" Size="19" Foreground="#D8A83E" /><StackPanel Grid.Column="1"><TextBlock Text="Atencao ao planejamento" FontWeight="Medium" /><TextBlock Text="{Binding ProjectionRiskText}" Classes="muted" FontSize="11" /><TextBlock Text="Revise despesas, compromissos ou aportes dos meses destacados para evitar saldo negativo." Classes="muted" FontSize="10" /></StackPanel></Grid></Border>
+                    <Border Classes="panel" Padding="0">
+                        <StackPanel>
+                            <Grid ColumnDefinitions="150,130,130,130,140,125,140,*" ColumnSpacing="10" Margin="18,14"><TextBlock Text="Mes" Classes="muted" FontSize="10" /><TextBlock Grid.Column="1" Text="Saldo inicial" Classes="muted" FontSize="10" /><TextBlock Grid.Column="2" Text="Receitas" Classes="muted" FontSize="10" /><TextBlock Grid.Column="3" Text="Gastos medios" Classes="muted" FontSize="10" /><TextBlock Grid.Column="4" Text="Contas e faturas" Classes="muted" FontSize="10" /><TextBlock Grid.Column="5" Text="Aportes" Classes="muted" FontSize="10" /><TextBlock Grid.Column="6" Text="Saldo final" Classes="muted" FontSize="10" /><TextBlock Grid.Column="7" Text="Situacao" Classes="muted" FontSize="10" /></Grid>
+                            <ItemsControl ItemsSource="{Binding FutureProjections}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:FutureProjectionViewModel"><Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="18,14"><Grid ColumnDefinitions="150,130,130,130,140,125,140,*" ColumnSpacing="10" VerticalAlignment="Center"><TextBlock Text="{Binding MonthText}" FontWeight="Medium" /><TextBlock Grid.Column="1" Text="{Binding OpeningBalanceText}" /><TextBlock Grid.Column="2" Text="{Binding IncomeText}" Foreground="{StaticResource PositiveBrush}" /><TextBlock Grid.Column="3" Text="{Binding ExpenseText}" /><TextBlock Grid.Column="4" Text="{Binding CommitmentsText}" /><TextBlock Grid.Column="5" Text="{Binding GoalContributionText}" /><Grid Grid.Column="6"><TextBlock Text="{Binding EndingBalanceText}" FontWeight="Medium" IsVisible="{Binding !IsRisk}" Foreground="{StaticResource AccentBrush}" /><TextBlock Text="{Binding EndingBalanceText}" FontWeight="Medium" IsVisible="{Binding IsRisk}" Foreground="{StaticResource NegativeBrush}" /></Grid><StackPanel Grid.Column="7" Orientation="Horizontal" Spacing="6"><LucideIcon Kind="TriangleAlert" Size="14" Foreground="{StaticResource NegativeBrush}" IsVisible="{Binding IsRisk}" /><TextBlock Text="{Binding StatusText}" FontSize="10" TextWrapping="Wrap" /></StackPanel></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="panel" Background="{StaticResource SurfaceAltBrush}"><StackPanel Spacing="6"><Grid ColumnDefinitions="Auto,*" ColumnSpacing="9"><LucideIcon Kind="Info" Size="17" Foreground="{StaticResource AccentBrush}" /><TextBlock Grid.Column="1" Text="Como esta projecao e calculada" FontWeight="Medium" /></Grid><TextBlock Text="Receitas e gastos usam a media dos meses que possuem movimentacao. Contas a pagar, faturas em aberto e aportes mensais dos objetivos sao somados separadamente. Os valores sao estimativas e se atualizam sempre que um lancamento ou compromisso e alterado." Classes="muted" FontSize="11" TextWrapping="Wrap" /></StackPanel></Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <ScrollViewer Grid.Row="1" IsVisible="{Binding IsAccountsPage}">
+                <StackPanel Margin="26,24,26,28" Spacing="16">
+                    <StackPanel>
+                        <TextBlock Text="Contas e cartoes" FontSize="23" FontWeight="Medium" />
+                        <TextBlock Text="Organize as contas, categorias e cartoes usados nos lancamentos" Classes="muted" FontSize="13" Margin="0,4,0,0" />
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+                        <Border Classes="panel">
+                            <StackPanel Spacing="12">
+                                <LucideIcon Kind="Landmark" Size="24" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Left" />
+                                <TextBlock Text="Contas e categorias" Classes="section-title" />
+                                <TextBlock Text="Cadastre contas, saldos iniciais e categorias de receitas ou despesas." Classes="muted" FontSize="12" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding Accounts.Count, StringFormat='{}{0} contas cadastradas'}" FontWeight="Medium" />
+                                <Button Classes="primary" Content="Gerenciar contas e categorias" Command="{Binding OpenSettingsCommand}" IsEnabled="{Binding IsActiveAdministrator}" HorizontalAlignment="Left" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Classes="panel">
+                            <StackPanel Spacing="12">
+                                <LucideIcon Kind="CreditCard" Size="24" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Left" />
+                                <TextBlock Text="Cartoes de credito" Classes="section-title" />
+                                <TextBlock Text="Configure limite, fechamento, vencimento e conta de pagamento." Classes="muted" FontSize="12" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding CreditCards.Count, StringFormat='{}{0} cartoes cadastrados'}" FontWeight="Medium" />
+                                <Button Classes="primary" Content="Gerenciar cartoes" Command="{Binding OpenCardsCommand}" IsEnabled="{Binding IsActiveAdministrator}" HorizontalAlignment="Left" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    <Border Classes="panel">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="Meu salario" Classes="section-title" />
+                            <TextBlock Text="Informe o valor, a conta de recebimento e o dia habitual. A receita sera lancada automaticamente quando esse dia chegar. Em meses curtos, vale o ultimo dia." Classes="muted" FontSize="12" TextWrapping="Wrap" />
+                            <Grid ColumnDefinitions="*,120,*" ColumnSpacing="12">
+                                <StackPanel Spacing="6"><TextBlock Text="Valor mensal" FontSize="11" FontWeight="Medium" /><NumericUpDown Value="{Binding SalaryAmount}" FormatString="N2" Minimum="0.01" Maximum="1000000000" Height="40" /></StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="6"><TextBlock Text="Dia do pagamento" FontSize="11" FontWeight="Medium" /><NumericUpDown Value="{Binding SalaryPayDay}" FormatString="N0" Minimum="1" Maximum="31" Increment="1" Height="40" /></StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="6"><TextBlock Text="Conta que recebe" FontSize="11" FontWeight="Medium" /><ComboBox ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedSalaryAccount}" Height="40" HorizontalAlignment="Stretch" /></StackPanel>
+                            </Grid>
+                            <Button Classes="primary" Content="Salvar salario" Command="{Binding SaveSalaryCommand}" HorizontalAlignment="Left" />
+                            <TextBlock Text="{Binding SalaryNotice}" Foreground="{StaticResource PositiveBrush}" FontSize="11" />
+                            <TextBlock Text="{Binding SalaryError}" Foreground="{StaticResource NegativeBrush}" FontSize="11" />
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="panel">
+                        <StackPanel>
+                            <TextBlock Text="Saldos das contas" Classes="section-title" Margin="0,0,0,8" />
+                            <ItemsControl ItemsSource="{Binding Accounts}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:AccountOption">
+                                        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,12">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Name}" FontWeight="Medium" />
+                                                    <TextBlock Text="{Binding TypeName}" Classes="muted" FontSize="11" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                                    <TextBlock Text="Saldo no periodo" Classes="muted" FontSize="10" HorizontalAlignment="Right" />
+                                                    <TextBlock Text="{Binding CurrentBalance}" FontSize="15" FontWeight="Medium" HorizontalAlignment="Right" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="panel collapsible-card" IsVisible="{Binding HasCreditCards}"><StackPanel><Button Classes="collapse-header" Classes.expanded="{Binding IsAccountCardLimitsExpanded}" Command="{Binding ToggleAccountCardLimitsCommand}"><Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12"><Border Width="38" Height="38" CornerRadius="8" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="Gauge" Size="18" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><StackPanel Grid.Column="1"><TextBlock Text="Uso e limite dos cartoes" FontWeight="Medium" /><TextBlock Text="Acompanhe e ajuste os limites vigentes" Classes="muted" FontSize="11" /></StackPanel><Grid Grid.Column="2"><LucideIcon Kind="ChevronDown" Size="19" IsVisible="{Binding !IsAccountCardLimitsExpanded}" /><LucideIcon Kind="ChevronUp" Size="19" Foreground="{StaticResource AccentBrush}" IsVisible="{Binding IsAccountCardLimitsExpanded}" /></Grid></Grid></Button><Border Classes="collapsible-content" Classes.expanded="{Binding IsAccountCardLimitsExpanded}" IsHitTestVisible="{Binding IsAccountCardLimitsExpanded}"><StackPanel><TextBlock Text="O valor utilizado considera todas as faturas ainda nao pagas." Classes="muted" FontSize="11" Margin="0,0,0,4" /><ItemsControl ItemsSource="{Binding CreditCardLimits}" ItemTemplate="{StaticResource CardLimitTemplate}" /><TextBlock Text="{Binding CardNotice}" Foreground="{StaticResource PositiveBrush}" FontSize="11" /><TextBlock Text="{Binding CardError}" Foreground="{StaticResource NegativeBrush}" FontSize="11" /></StackPanel></Border></StackPanel></Border>
+                    <Border Classes="panel" IsVisible="{Binding HasCreditCards}">
+                        <StackPanel Spacing="14">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Faturas por periodo" Classes="section-title" />
+                                <TextBlock Grid.Column="1" Text="Compras geram despesas; pagamentos apenas quitam a fatura" Classes="muted" FontSize="11" />
+                            </Grid>
+                            <Border Classes="panel collapsible-card"><StackPanel><Button Classes="collapse-header" Classes.expanded="{Binding IsPreviousInvoiceExpanded}" Command="{Binding TogglePreviousInvoiceCommand}"><Grid ColumnDefinitions="*,Auto"><StackPanel><TextBlock Text="Fatura anterior" FontWeight="Medium" /><TextBlock Text="Periodo encerrado imediatamente anterior ao selecionado" Classes="muted" FontSize="10" /></StackPanel><Grid Grid.Column="1"><LucideIcon Kind="ChevronDown" Size="19" IsVisible="{Binding !IsPreviousInvoiceExpanded}" /><LucideIcon Kind="ChevronUp" Size="19" Foreground="{StaticResource AccentBrush}" IsVisible="{Binding IsPreviousInvoiceExpanded}" /></Grid></Grid></Button><Border Classes="collapsible-content" Classes.expanded="{Binding IsPreviousInvoiceExpanded}" IsHitTestVisible="{Binding IsPreviousInvoiceExpanded}"><ItemsControl ItemsSource="{Binding PreviousCreditCardInvoices}" ItemTemplate="{StaticResource InvoiceRowTemplate}" /></Border></StackPanel></Border>
+                            <Border BorderBrush="{StaticResource AccentBrush}" BorderThickness="2" CornerRadius="7" Padding="14"><StackPanel><TextBlock Text="Fatura atual" Foreground="{StaticResource AccentBrush}" FontWeight="Medium" /><TextBlock Text="Periodo selecionado" Classes="muted" FontSize="10" /><ItemsControl ItemsSource="{Binding CurrentCreditCardInvoices}" ItemTemplate="{StaticResource InvoiceRowTemplate}" /></StackPanel></Border>
+                            <Border Classes="panel collapsible-card"><StackPanel><Button Classes="collapse-header" Classes.expanded="{Binding IsNextInvoiceExpanded}" Command="{Binding ToggleNextInvoiceCommand}"><Grid ColumnDefinitions="*,Auto"><StackPanel><TextBlock Text="Proxima fatura" FontWeight="Medium" /><TextBlock Text="Compras feitas apos o fechamento aparecem aqui" Classes="muted" FontSize="10" /></StackPanel><Grid Grid.Column="1"><LucideIcon Kind="ChevronDown" Size="19" IsVisible="{Binding !IsNextInvoiceExpanded}" /><LucideIcon Kind="ChevronUp" Size="19" Foreground="{StaticResource AccentBrush}" IsVisible="{Binding IsNextInvoiceExpanded}" /></Grid></Grid></Button><Border Classes="collapsible-content" Classes.expanded="{Binding IsNextInvoiceExpanded}" IsHitTestVisible="{Binding IsNextInvoiceExpanded}"><ItemsControl ItemsSource="{Binding NextCreditCardInvoices}" ItemTemplate="{StaticResource InvoiceRowTemplate}" /></Border></StackPanel></Border>
+                            <TextBlock Text="{Binding CardNotice}" Foreground="{StaticResource PositiveBrush}" FontSize="12" />
+                            <TextBlock Text="{Binding CardError}" Foreground="{StaticResource NegativeBrush}" FontSize="12" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <ScrollViewer Grid.Row="1" IsVisible="{Binding IsReservesPage}">
+                <Grid Margin="26,24,26,28" ColumnDefinitions="1.35*,0.65*" ColumnSpacing="18">
+                    <Border Classes="panel">
+                        <StackPanel Spacing="16">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                <Border Width="44" Height="44" CornerRadius="10" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="PiggyBank" Size="21" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Suas reservas" FontSize="22" FontWeight="Medium" /><TextBlock Text="Separe dinheiro por finalidade sem registrar uma despesa." Classes="muted" FontSize="12" /></StackPanel>
+                                <Border Grid.Column="2" Background="{StaticResource SurfaceAltBrush}" CornerRadius="14" Padding="12,6" VerticalAlignment="Center"><TextBlock Text="{Binding Reserves.Count, StringFormat='{}{0} cadastradas'}" Foreground="{StaticResource AccentBrush}" FontSize="11" FontWeight="Medium" /></Border>
+                            </Grid>
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                                <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="14"><StackPanel Spacing="5"><TextBlock Text="Disponivel para guardar" Classes="muted" FontSize="10" /><TextBlock Text="{Binding AvailableBalanceText}" FontSize="19" FontWeight="Medium" Foreground="{StaticResource AccentBrush}" /></StackPanel></Border>
+                                <Border Grid.Column="1" Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="14"><StackPanel Spacing="5"><TextBlock Text="Total reservado" Classes="muted" FontSize="10" /><TextBlock Text="{Binding TotalReservedText}" FontSize="19" FontWeight="Medium" Foreground="{StaticResource AccentBrush}" /></StackPanel></Border>
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding Reserves}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ReserveViewModel">
+                                        <Border Classes="reserve-card">
+                                            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="10"><Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource SurfaceBrush}"><LucideIcon Kind="PiggyBank" Size="17" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Medium" /><TextBlock Text="Valor separado do saldo disponivel" Classes="muted" FontSize="10" /></StackPanel><TextBlock Grid.Column="2" Text="{Binding BalanceText}" Foreground="{StaticResource AccentBrush}" FontSize="15" FontWeight="Medium" VerticalAlignment="Center" /><Button Grid.Column="3" Classes="icon-button" Command="{Binding Owner.EditReserveCommand}" CommandParameter="{Binding}" ToolTip.Tip="Editar reserva"><LucideIcon Kind="Pencil" Size="14" /></Button><Button Grid.Column="4" Classes="icon-button" Command="{Binding Owner.RequestDeleteReserveCommand}" CommandParameter="{Binding}" ToolTip.Tip="Excluir reserva"><LucideIcon Kind="Trash" Size="14" /></Button></Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <StackPanel IsVisible="{Binding IsReserveListEmpty}" HorizontalAlignment="Center" Margin="0,28" Spacing="8"><LucideIcon Kind="PiggyBank" Size="30" Foreground="{StaticResource MutedTextBrush}" HorizontalAlignment="Center" /><TextBlock Text="Nenhuma reserva cadastrada" FontWeight="Medium" /><TextBlock Text="Crie uma reserva para organizar o dinheiro por finalidade." Classes="muted" FontSize="11" /></StackPanel>
+                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,16,0,0">
+                                <StackPanel Spacing="10"><Grid ColumnDefinitions="*,Auto"><StackPanel><TextBlock Text="Historico de movimentacoes" FontSize="15" FontWeight="Medium" /><TextBlock Text="Aportes e retiradas registrados nas reservas" Classes="muted" FontSize="10" /></StackPanel></Grid>
+                                <ItemsControl ItemsSource="{Binding ReserveMovements}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:ReserveMovementViewModel"><Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="7" Padding="12" Margin="0,0,0,7"><Grid ColumnDefinitions="Auto,*,130,100" ColumnSpacing="10"><Border Width="32" Height="32" CornerRadius="7" Background="{StaticResource SurfaceBrush}"><LucideIcon Kind="ArrowLeftRight" Size="15" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><StackPanel Grid.Column="1"><TextBlock Text="{Binding ReserveName}" FontWeight="Medium" /><TextBlock Text="{Binding AccountName}" Classes="muted" FontSize="10" /></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="{Binding TypeName}" FontSize="11" /><TextBlock Text="{Binding DateText}" Classes="muted" FontSize="10" /></StackPanel><TextBlock Grid.Column="3" Text="{Binding AmountText}" Classes.positive="{Binding IsDeposit}" Classes.negative="{Binding !IsDeposit}" HorizontalAlignment="Right" VerticalAlignment="Center" FontWeight="Medium" /></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                                <StackPanel IsVisible="{Binding IsReserveMovementListEmpty}" HorizontalAlignment="Center" Margin="0,22" Spacing="5"><TextBlock Text="Nenhuma movimentacao registrada" FontWeight="Medium" /><TextBlock Text="A atividade das reservas aparecera aqui." Classes="muted" FontSize="10" /></StackPanel></StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="16">
+                        <Border Classes="panel"><StackPanel Spacing="13">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10"><Border Width="38" Height="38" CornerRadius="8" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="PiggyBank" Size="18" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{Binding ReserveFormTitle}" FontSize="16" FontWeight="Medium" /><TextBlock Text="Crie uma finalidade para o dinheiro separado" Classes="muted" FontSize="10" /></StackPanel></Grid>
+                            <StackPanel Spacing="6"><TextBlock Text="Nome da reserva" FontSize="11" FontWeight="Medium" /><TextBox Text="{Binding NewReserveName}" PlaceholderText="Ex.: Emergencia" Height="40" /></StackPanel>
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8"><Button Classes="primary" Content="{Binding ReserveSaveButtonText}" Command="{Binding AddReserveCommand}" Height="40" HorizontalAlignment="Stretch" /><Button Grid.Column="1" Content="Cancelar" Command="{Binding CancelReserveEditCommand}" IsVisible="{Binding IsEditingReserve}" Height="40" /></Grid>
+                        </StackPanel></Border>
+                        <Border Classes="panel"><StackPanel Spacing="12">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10"><Border Width="38" Height="38" CornerRadius="8" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="ArrowDownUp" Size="18" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Movimentar reserva" FontSize="16" FontWeight="Medium" /><TextBlock Text="Registre um aporte ou uma retirada" Classes="muted" FontSize="10" /></StackPanel></Grid>
+                            <StackPanel Spacing="6"><TextBlock Text="Reserva" FontSize="11" FontWeight="Medium" /><ComboBox ItemsSource="{Binding Reserves}" SelectedItem="{Binding SelectedReserve}" PlaceholderText="Selecione" Height="40" HorizontalAlignment="Stretch" /></StackPanel>
+                            <StackPanel Spacing="6"><TextBlock Text="Conta relacionada" FontSize="11" FontWeight="Medium" /><ComboBox ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedReserveAccount}" PlaceholderText="Selecione" Height="40" HorizontalAlignment="Stretch" /></StackPanel>
+                            <StackPanel Spacing="6"><TextBlock Text="Valor" FontSize="11" FontWeight="Medium" /><NumericUpDown Value="{Binding ReserveMovementAmount}" Minimum="0.01" Maximum="1000000000" Height="40" /></StackPanel>
+                            <TextBlock Text="Aporte separa dinheiro do saldo disponivel e nao conta como despesa. A ordem de lancamento das receitas nao altera o resultado final." Classes="muted" FontSize="11" TextWrapping="Wrap" />
+                            <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="7" Padding="10"><CheckBox Content="Aporte (desmarque para retirada)" IsChecked="{Binding IsReserveDeposit}" /></Border>
+                            <Button Classes="primary" Content="Registrar movimentacao" Command="{Binding SaveReserveMovementCommand}" Height="40" HorizontalAlignment="Stretch" />
+                            <TextBlock Text="{Binding ReserveNotice}" Foreground="{StaticResource PositiveBrush}" />
+                            <TextBlock Text="{Binding ReserveError}" Foreground="{StaticResource NegativeBrush}" />
+                        </StackPanel></Border>
+                        <Border Classes="panel"><StackPanel Spacing="12">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10"><Border Width="38" Height="38" CornerRadius="8" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="ArrowLeftRight" Size="18" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Transferir entre reservas" FontSize="16" FontWeight="Medium" /><TextBlock Text="Realocar dinheiro sem alterar o total reservado" Classes="muted" FontSize="10" /></StackPanel></Grid>
+                            <StackPanel Spacing="6"><TextBlock Text="Reserva de origem" FontSize="11" FontWeight="Medium" /><ComboBox ItemsSource="{Binding Reserves}" SelectedItem="{Binding SelectedTransferSourceReserve}" PlaceholderText="Selecione" Height="40" HorizontalAlignment="Stretch" /></StackPanel>
+                            <StackPanel Spacing="6"><TextBlock Text="Reserva de destino" FontSize="11" FontWeight="Medium" /><ComboBox ItemsSource="{Binding Reserves}" SelectedItem="{Binding SelectedTransferDestinationReserve}" PlaceholderText="Selecione" Height="40" HorizontalAlignment="Stretch" /></StackPanel>
+                            <StackPanel Spacing="6"><TextBlock Text="Valor da transferencia" FontSize="11" FontWeight="Medium" /><NumericUpDown Value="{Binding ReserveTransferAmount}" Minimum="0.01" Maximum="1000000000" Height="40" /></StackPanel>
+                            <Button Classes="primary" Content="Transferir" Command="{Binding TransferReserveCommand}" Height="40" HorizontalAlignment="Stretch" />
+                            <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="7" Padding="10"><TextBlock Text="O total reservado nao muda e nenhuma despesa e criada." Classes="muted" FontSize="10" TextWrapping="Wrap" /></Border>
+                        </StackPanel></Border>
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
+            <ScrollViewer Grid.Row="1" IsVisible="{Binding IsGoalsPage}">
+                <Grid Margin="26,24,26,28" ColumnDefinitions="1.35*,0.65*" ColumnSpacing="18">
+                    <Border Classes="panel">
+                        <StackPanel Spacing="16">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                <Border Width="44" Height="44" CornerRadius="10" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="Target" Size="21" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Seus objetivos" FontSize="22" FontWeight="Medium" /><TextBlock Text="Acompanhe o progresso e escolha o destaque da Visao geral." Classes="muted" FontSize="12" /></StackPanel>
+                                <Border Grid.Column="2" Background="{StaticResource SurfaceAltBrush}" CornerRadius="14" Padding="12,6" VerticalAlignment="Center"><TextBlock Text="{Binding Goals.Count, StringFormat='{}{0} cadastrados'}" Foreground="{StaticResource AccentBrush}" FontSize="11" FontWeight="Medium" /></Border>
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding Goals}"><ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:GoalViewModel">
+                                    <Border Classes="goal-card" Classes.primary="{Binding IsPrimary}">
+                                        <StackPanel Spacing="11">
+                                            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+                                                <StackPanel><TextBlock Text="{Binding Name}" FontSize="15" FontWeight="Medium" /><TextBlock Text="{Binding ProgressText}" Classes="muted" FontSize="11" Margin="0,3,0,0" /></StackPanel>
+                                                <Border Grid.Column="1" IsVisible="{Binding IsPrimary}" Background="{StaticResource SurfaceBrush}" CornerRadius="12" Padding="10,5" VerticalAlignment="Center"><TextBlock Text="Principal" Foreground="{StaticResource AccentBrush}" FontWeight="Medium" FontSize="10" /></Border>
+                                                <Button Grid.Column="1" Classes="secondary" Content="Definir como principal" IsVisible="{Binding !IsPrimary}" Command="{Binding Owner.SetPrimaryGoalCommand}" CommandParameter="{Binding}" VerticalAlignment="Center" />
+                                                <Button Grid.Column="2" Classes="icon-button" Command="{Binding Owner.EditGoalCommand}" CommandParameter="{Binding}" ToolTip.Tip="Editar objetivo"><LucideIcon Kind="Pencil" Size="14" /></Button>
+                                                <Button Grid.Column="3" Classes="icon-button" Command="{Binding Owner.RequestDeleteGoalCommand}" CommandParameter="{Binding}" ToolTip.Tip="Excluir objetivo"><LucideIcon Kind="Trash" Size="14" /></Button>
+                                            </Grid>
+                                            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding PlannedContributionText}" Classes="muted" FontSize="11" /><TextBlock Grid.Column="1" Text="{Binding ProgressPercentageText}" Foreground="{StaticResource AccentBrush}" FontSize="12" FontWeight="Medium" /></Grid>
+                                            <ProgressBar Minimum="0" Maximum="100" Value="{Binding ProgressPercentage}" Height="9" Foreground="{StaticResource AccentBrush}" Background="{StaticResource SurfaceBrush}" />
+                                            <Border Background="{StaticResource SurfaceBrush}" CornerRadius="6" Padding="10,7"><Grid ColumnDefinitions="Auto,*" ColumnSpacing="8"><LucideIcon Kind="Clock3" Size="14" Foreground="{StaticResource MutedTextBrush}" /><TextBlock Grid.Column="1" Text="{Binding ForecastText}" Classes="muted" FontSize="10" VerticalAlignment="Center" /></Grid></Border>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate></ItemsControl>
+                            <StackPanel IsVisible="{Binding IsGoalListEmpty}" HorizontalAlignment="Center" Margin="0,48" Spacing="8"><LucideIcon Kind="Target" Size="30" Foreground="{StaticResource MutedTextBrush}" HorizontalAlignment="Center" /><TextBlock Text="Nenhum objetivo cadastrado" FontWeight="Medium" /><TextBlock Text="Use o formulario ao lado para criar seu primeiro plano." Classes="muted" FontSize="11" /></StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="1" Classes="panel" VerticalAlignment="Top">
+                        <StackPanel Spacing="14">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="11"><Border Width="38" Height="38" CornerRadius="8" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="Target" Size="18" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{Binding GoalFormTitle}" FontSize="17" FontWeight="Medium" /><TextBlock Text="Defina o valor e o ritmo do seu plano" Classes="muted" FontSize="10" /></StackPanel></Grid>
+                            <StackPanel Spacing="6"><TextBlock Text="Nome do objetivo" FontSize="11" FontWeight="Medium" /><TextBox Text="{Binding NewGoalName}" PlaceholderText="Ex.: Entrada do apartamento" Height="40" /></StackPanel>
+                            <StackPanel Spacing="6"><TextBlock Text="Valor alvo" FontSize="11" FontWeight="Medium" /><NumericUpDown Value="{Binding NewGoalTargetAmount}" Minimum="0.01" Maximum="1000000000" Height="40" /></StackPanel>
+                            <StackPanel Spacing="6"><TextBlock Text="Reserva vinculada" FontSize="11" FontWeight="Medium" /><ComboBox ItemsSource="{Binding Reserves}" SelectedItem="{Binding SelectedGoalReserve}" PlaceholderText="Opcional" Height="40" HorizontalAlignment="Stretch" /></StackPanel>
+                            <StackPanel Spacing="6"><TextBlock Text="Aporte mensal planejado" FontSize="11" FontWeight="Medium" /><NumericUpDown Value="{Binding NewGoalMonthlyContribution}" Minimum="0" Maximum="1000000000" Height="40" /></StackPanel>
+                            <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="7" Padding="11"><Grid ColumnDefinitions="Auto,*" ColumnSpacing="9"><LucideIcon Kind="Info" Size="15" Foreground="{StaticResource AccentBrush}" /><TextBlock Grid.Column="1" Text="A previsao usa o valor restante e o aporte mensal. Sem planejamento, usamos a media real da reserva vinculada." Classes="muted" FontSize="10" TextWrapping="Wrap" /></Grid></Border>
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8"><Button Classes="primary" Content="{Binding GoalSaveButtonText}" Command="{Binding AddGoalCommand}" Height="40" HorizontalAlignment="Stretch" /><Button Grid.Column="1" Content="Cancelar" Command="{Binding CancelGoalEditCommand}" IsVisible="{Binding IsEditingGoal}" Height="40" /></Grid>
+                            <TextBlock Text="{Binding GoalNotice}" Foreground="{StaticResource PositiveBrush}" FontSize="11" TextWrapping="Wrap" /><TextBlock Text="{Binding GoalError}" Foreground="{StaticResource NegativeBrush}" FontSize="11" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </ScrollViewer>
+            <ScrollViewer Grid.Row="1" IsVisible="{Binding IsReportsPage}">
+                <StackPanel Margin="26,24,26,28" Spacing="18">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="13">
+                        <Border Width="46" Height="46" CornerRadius="11" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="ChartNoAxesCombined" Size="22" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Relatorios" FontSize="23" FontWeight="SemiBold" /><TextBlock Text="Entenda para onde o dinheiro esta indo e acompanhe sua evolucao." Classes="muted" FontSize="12" /></StackPanel>
+                        <Button Grid.Column="2" Classes="primary" Command="{Binding OpenReportTransactionsCommand}" Height="42"><StackPanel Orientation="Horizontal" Spacing="8"><LucideIcon Kind="ReceiptText" Size="16" /><TextBlock Text="Ver lancamentos" Foreground="White" /></StackPanel></Button>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="1.4*,0.6*" ColumnSpacing="18">
+                        <Border Classes="panel">
+                            <StackPanel Spacing="15">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                    <StackPanel><TextBlock Text="Evolucao mensal" FontSize="16" FontWeight="SemiBold" /><TextBlock Text="Receitas e despesas dos ultimos seis meses" Classes="muted" FontSize="10" Margin="0,3,0,0" /></StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center"><StackPanel Orientation="Horizontal" Spacing="5"><Ellipse Width="8" Height="8" Fill="{StaticResource PositiveBrush}" /><TextBlock Text="Receitas" Classes="muted" FontSize="10" /></StackPanel><StackPanel Orientation="Horizontal" Spacing="5"><Ellipse Width="8" Height="8" Fill="{StaticResource ChartExpenseBrush}" /><TextBlock Text="Despesas" Classes="muted" FontSize="10" /></StackPanel></StackPanel>
+                                </Grid>
+                                <Border Height="1" Background="{StaticResource BorderBrush}" />
+                                <ItemsControl ItemsSource="{Binding MonthlyReports}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:MonthlyReportViewModel"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Bottom" Spacing="7"><Grid Height="138" ColumnDefinitions="20,20" ColumnSpacing="5" VerticalAlignment="Bottom"><Border Grid.Column="0" Height="{Binding IncomeHeight}" Background="{StaticResource PositiveBrush}" CornerRadius="4,4,0,0" VerticalAlignment="Bottom" ToolTip.Tip="{Binding IncomeText}" /><Border Grid.Column="1" Height="{Binding ExpenseHeight}" Background="{StaticResource ChartExpenseBrush}" CornerRadius="4,4,0,0" VerticalAlignment="Bottom" ToolTip.Tip="{Binding ExpenseText}" /></Grid><TextBlock Text="{Binding Month}" Classes="muted" FontSize="11" HorizontalAlignment="Center" /></StackPanel></DataTemplate>
+                                </ItemsControl.ItemTemplate></ItemsControl>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Classes="panel">
+                            <Grid RowDefinitions="Auto,*,Auto">
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10"><Border Width="38" Height="38" CornerRadius="9" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="ArrowDownUp" Size="18" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Saldo do periodo" FontSize="15" FontWeight="SemiBold" /><TextBlock Text="Mes selecionado" Classes="muted" FontSize="10" /></StackPanel></Grid>
+                                <StackPanel Grid.Row="1" VerticalAlignment="Center" Spacing="7"><TextBlock Text="{Binding ReportNetText}" Classes.positive="{Binding IsReportNetPositive}" Classes.negative="{Binding IsReportNetNegative}" FontSize="31" FontWeight="SemiBold" /><TextBlock Text="Receitas menos despesas" Classes="muted" FontSize="11" /></StackPanel>
+                                <Border Grid.Row="2" Background="{StaticResource SurfaceAltBrush}" CornerRadius="8" Padding="11,8"><TextBlock Text="Positivo indica sobra; negativo indica que as despesas foram maiores." Classes="muted" FontSize="10" TextWrapping="Wrap" /></Border>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <Border Classes="panel">
+                        <StackPanel Spacing="13">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10"><Border Width="38" Height="38" CornerRadius="9" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="Tags" Size="18" Foreground="{StaticResource ChartExpenseBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Despesas por categoria" FontSize="16" FontWeight="SemiBold" /><TextBlock Text="Participacao de cada categoria no total do mes" Classes="muted" FontSize="10" /></StackPanel></Grid>
+                            <ItemsControl ItemsSource="{Binding CategoryReports}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:CategoryReportViewModel"><Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="13,11" Margin="0,0,0,7"><Grid ColumnDefinitions="190,*,105,58,Auto" ColumnSpacing="12" VerticalAlignment="Center"><TextBlock Text="{Binding Name}" FontWeight="Medium" /><ProgressBar Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Percentage}" Height="9" Foreground="{StaticResource ChartExpenseBrush}" Background="{StaticResource SurfaceBrush}" /><TextBlock Grid.Column="2" Text="{Binding AmountText}" FontWeight="Medium" HorizontalAlignment="Right" /><TextBlock Grid.Column="3" Text="{Binding PercentageText}" Classes="muted" HorizontalAlignment="Right" /><Button Grid.Column="4" Classes="icon-button" Command="{Binding $parent[Window].DataContext.OpenCategoryReportCommand}" CommandParameter="{Binding}" ToolTip.Tip="Ver lancamentos"><LucideIcon Kind="Search" Size="14" /></Button></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                            <Border IsVisible="{Binding IsReportCategoryListEmpty}" Background="{StaticResource SurfaceAltBrush}" CornerRadius="8" Padding="14"><TextBlock Text="Nenhuma despesa no periodo selecionado." Classes="muted" HorizontalAlignment="Center" /></Border>
+                        </StackPanel>
+                    </Border>
+
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="16">
+                        <Border Classes="panel"><StackPanel Spacing="12"><Grid ColumnDefinitions="Auto,*" ColumnSpacing="9"><Border Width="34" Height="34" CornerRadius="8" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="WalletCards" Size="16" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><StackPanel Grid.Column="1"><TextBlock Text="Despesas por conta" FontWeight="SemiBold" /><TextBlock Text="Saidas sem cartao" Classes="muted" FontSize="10" /></StackPanel></Grid><ItemsControl ItemsSource="{Binding AccountReports}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:ReportBreakdownViewModel"><Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,11"><Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8"><StackPanel><TextBlock Text="{Binding Name}" FontWeight="Medium" /><TextBlock Text="{Binding DetailText}" Classes="muted" FontSize="10" /></StackPanel><TextBlock Grid.Column="1" Text="{Binding AmountText}" FontWeight="Medium" VerticalAlignment="Center" /><Button Grid.Column="2" Classes="icon-button" Command="{Binding $parent[Window].DataContext.OpenReportBreakdownCommand}" CommandParameter="{Binding}" ToolTip.Tip="Ver lancamentos"><LucideIcon Kind="Search" Size="14" /></Button></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel></Border>
+                        <Border Grid.Column="1" Classes="panel"><StackPanel Spacing="12"><Grid ColumnDefinitions="Auto,*" ColumnSpacing="9"><Border Width="34" Height="34" CornerRadius="8" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="CreditCard" Size="16" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><StackPanel Grid.Column="1"><TextBlock Text="Compras por cartao" FontWeight="SemiBold" /><TextBlock Text="Gastos no credito" Classes="muted" FontSize="10" /></StackPanel></Grid><ItemsControl ItemsSource="{Binding CardReports}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:ReportBreakdownViewModel"><Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,11"><Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8"><StackPanel><TextBlock Text="{Binding Name}" FontWeight="Medium" /><TextBlock Text="{Binding DetailText}" Classes="muted" FontSize="10" /></StackPanel><TextBlock Grid.Column="1" Text="{Binding AmountText}" FontWeight="Medium" VerticalAlignment="Center" /><Button Grid.Column="2" Classes="icon-button" Command="{Binding $parent[Window].DataContext.OpenReportBreakdownCommand}" CommandParameter="{Binding}" ToolTip.Tip="Ver compras"><LucideIcon Kind="Search" Size="14" /></Button></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel></Border>
+                        <Border Grid.Column="2" Classes="panel"><StackPanel Spacing="12"><Grid ColumnDefinitions="Auto,*" ColumnSpacing="9"><Border Width="34" Height="34" CornerRadius="8" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="Users" Size="16" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><StackPanel Grid.Column="1"><TextBlock Text="Atividade por autor" FontWeight="SemiBold" /><TextBlock Text="Lancamentos registrados" Classes="muted" FontSize="10" /></StackPanel></Grid><ItemsControl ItemsSource="{Binding AuthorReports}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:ReportBreakdownViewModel"><Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,11"><Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8"><StackPanel><TextBlock Text="{Binding Name}" FontWeight="Medium" /><TextBlock Text="{Binding DetailText}" Classes="muted" FontSize="10" /></StackPanel><TextBlock Grid.Column="1" Text="{Binding AmountText}" FontWeight="Medium" VerticalAlignment="Center" /><Button Grid.Column="2" Classes="icon-button" Command="{Binding $parent[Window].DataContext.OpenReportBreakdownCommand}" CommandParameter="{Binding}" ToolTip.Tip="Ver lancamentos"><LucideIcon Kind="Search" Size="14" /></Button></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel></Border>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+                        <Border Classes="panel"><Grid ColumnDefinitions="Auto,*" ColumnSpacing="12"><Border Width="42" Height="42" CornerRadius="10" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="PiggyBank" Size="20" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Reservas" Classes="muted" FontSize="10" /><TextBlock Text="{Binding ReportReserveSummary}" FontSize="17" FontWeight="SemiBold" Margin="0,3,0,0" /></StackPanel></Grid></Border>
+                        <Border Grid.Column="1" Classes="panel"><Grid ColumnDefinitions="Auto,*" ColumnSpacing="12"><Border Width="42" Height="42" CornerRadius="10" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="Target" Size="20" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Objetivos" Classes="muted" FontSize="10" /><TextBlock Text="{Binding ReportGoalSummary}" FontSize="17" FontWeight="SemiBold" Margin="0,3,0,0" /></StackPanel></Grid></Border>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+            <ScrollViewer Grid.Row="1" IsVisible="{Binding IsMembersPage}">
+                <Grid Margin="26,24,26,28" ColumnDefinitions="1.25*,0.75*" ColumnSpacing="18">
+                    <Border Classes="panel"><StackPanel Spacing="16">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <Border Width="46" Height="46" CornerRadius="11" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="Users" Size="22" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Membros" FontSize="22" FontWeight="SemiBold" /><TextBlock Text="{Binding SelectedSpace.Name, StringFormat='{}Participantes de {0}'}" Classes="muted" FontSize="12" /></StackPanel>
+                            <Border Grid.Column="2" Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="14" Padding="11,5" VerticalAlignment="Center"><TextBlock Text="{Binding MemberCountText}" Foreground="{StaticResource AccentBrush}" FontSize="11" FontWeight="Medium" /></Border>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource BorderBrush}" />
+                        <ItemsControl ItemsSource="{Binding Members}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:MemberViewModel">
+                            <Border Classes="member-card"><Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="12">
+                                <Border Width="44" Height="44" CornerRadius="22" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1"><TextBlock Text="{Binding Initials}" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3"><TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" /><TextBlock Text="Acesso ao espaco selecionado" Classes="muted" FontSize="10" /></StackPanel>
+                                <Border Grid.Column="2" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" CornerRadius="12" Padding="10,4" VerticalAlignment="Center" IsVisible="{Binding IsAdministrator}"><StackPanel Orientation="Horizontal" Spacing="5"><LucideIcon Kind="ShieldCheck" Size="13" Foreground="{StaticResource AccentBrush}" /><TextBlock Text="Administrador" Foreground="{StaticResource AccentBrush}" FontSize="10" /></StackPanel></Border>
+                                <Border Grid.Column="2" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="10,4" VerticalAlignment="Center" IsVisible="{Binding IsMember}"><TextBlock Text="Membro" Classes="muted" FontSize="10" /></Border>
+                                <Button Grid.Column="3" Classes="secondary" Content="{Binding ChangeRoleText}" IsVisible="{Binding CanChangeRole}" IsEnabled="{Binding Owner.IsActiveAdministrator}" Command="{Binding Owner.ToggleMemberRoleCommand}" CommandParameter="{Binding}" ToolTip.Tip="Alterar nivel de acesso" />
+                                <Button Grid.Column="4" Classes="icon-button" IsVisible="{Binding CanRemove}" IsEnabled="{Binding Owner.IsActiveAdministrator}" Command="{Binding Owner.RequestDeleteMemberCommand}" CommandParameter="{Binding}" ToolTip.Tip="Remover participante"><LucideIcon Kind="Trash" Size="15" /></Button>
+                            </Grid></Border>
+                        </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                    </StackPanel></Border>
+                    <StackPanel Grid.Column="1" Spacing="16" VerticalAlignment="Top" IsEnabled="{Binding IsActiveAdministrator}">
+                        <Border Classes="panel"><StackPanel Spacing="13">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10"><Border Width="38" Height="38" CornerRadius="9" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="PanelsTopLeft" Size="18" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Gerenciar espacos" Classes="section-title" /><TextBlock Text="Criar ou editar ambientes financeiros" Classes="muted" FontSize="10" /></StackPanel></Grid>
+                            <StackPanel Spacing="6"><TextBlock Text="Nome do espaco" FontSize="11" FontWeight="Medium" /><TextBox Text="{Binding NewSpaceName}" PlaceholderText="Ex.: Casa, Viagem ou Individual" Height="40" /></StackPanel>
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                <Button Classes="primary" Command="{Binding AddFinancialSpaceCommand}"><StackPanel Orientation="Horizontal" Spacing="7"><LucideIcon Kind="Plus" Size="15" /><TextBlock Text="Criar espaco" Foreground="White" /></StackPanel></Button>
+                                <Button Grid.Column="1" Classes="secondary" Content="Renomear atual" Command="{Binding RenameFinancialSpaceCommand}" />
+                            </Grid>
+                            <Button Classes="secondary" Command="{Binding RequestDeleteFinancialSpaceCommand}" IsEnabled="{Binding CanDeleteSelectedSpace}" HorizontalAlignment="Stretch"><StackPanel Orientation="Horizontal" Spacing="7"><LucideIcon Kind="Trash" Size="14" Foreground="{StaticResource NegativeBrush}" /><TextBlock Text="Excluir espaco atual" Foreground="{StaticResource NegativeBrush}" /></StackPanel></Button>
+                            <TextBlock Text="{Binding SpaceNotice}" Foreground="{StaticResource PositiveBrush}" /><TextBlock Text="{Binding SpaceError}" Foreground="{StaticResource NegativeBrush}" TextWrapping="Wrap" />
+                        </StackPanel></Border>
+                        <Border Classes="panel"><StackPanel Spacing="13">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10"><Border Width="38" Height="38" CornerRadius="9" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="UserPlus" Size="18" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Adicionar participante" Classes="section-title" /><TextBlock Text="Inclua alguem no espaco atual" Classes="muted" FontSize="10" /></StackPanel></Grid>
+                            <StackPanel Spacing="6"><TextBlock Text="Nome" FontSize="11" FontWeight="Medium" /><TextBox Text="{Binding NewMemberName}" PlaceholderText="Nome do participante" Height="40" /></StackPanel>
+                            <StackPanel Spacing="6"><TextBlock Text="Nivel de acesso" FontSize="11" FontWeight="Medium" /><ComboBox ItemsSource="{Binding MemberRoles}" SelectedItem="{Binding SelectedMemberRole}" Height="40" /></StackPanel>
+                            <TextBlock Text="No primeiro acesso, o participante criara seu proprio PIN." Classes="muted" FontSize="11" TextWrapping="Wrap" />
+                            <Button Classes="primary" Command="{Binding AddMemberCommand}" HorizontalAlignment="Stretch"><StackPanel Orientation="Horizontal" Spacing="7"><LucideIcon Kind="UserPlus" Size="15" /><TextBlock Text="Adicionar participante" Foreground="White" /></StackPanel></Button>
+                            <TextBlock Text="{Binding MemberNotice}" Foreground="{StaticResource PositiveBrush}" /><TextBlock Text="{Binding MemberError}" Foreground="{StaticResource NegativeBrush}" />
+                        </StackPanel></Border>
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
+        </Grid>
+
+        <Border Grid.ColumnSpan="2"
+                IsVisible="{Binding IsTransactionFormOpen}"
+                Background="#66000000">
+            <Border Width="520"
+                    MaxHeight="690"
+                    Padding="26"
+                    Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="16">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel>
+                            <TextBlock Text="{Binding TransactionFormTitle}" FontSize="20" FontWeight="Medium" />
+                            <TextBlock Text="Registre uma receita ou despesa" Classes="muted" FontSize="12" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="icon-button" Command="{Binding CloseTransactionFormCommand}" ToolTip.Tip="Fechar">
+                            <LucideIcon Kind="X" Size="17" />
+                        </Button>
+                    </Grid>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Tipo" FontSize="12" FontWeight="Medium" />
+                        <ComboBox ItemsSource="{Binding TransactionTypes}" SelectedItem="{Binding SelectedTransactionType}" Height="40" HorizontalAlignment="Stretch" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Descricao" FontSize="12" FontWeight="Medium" />
+                        <TextBox Text="{Binding TransactionDescription}" PlaceholderText="Ex.: Supermercado" Height="40" />
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <StackPanel Grid.Column="0" Spacing="6">
+                            <TextBlock Text="Valor" FontSize="12" FontWeight="Medium" />
+                            <NumericUpDown Value="{Binding TransactionAmount}" FormatString="N2" Minimum="0.01" Maximum="1000000000" Increment="1" Height="40" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="6">
+                            <TextBlock Text="Data" FontSize="12" FontWeight="Medium" />
+                            <CalendarDatePicker SelectedDate="{Binding TransactionDate}"
+                                                SelectedDateFormat="Custom"
+                                                CustomDateFormatString="dd/MM/yyyy"
+                                                PlaceholderText="dd/mm/aaaa"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Left"
+                                                VerticalContentAlignment="Center"
+                                                Height="40" />
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Spacing="6" IsVisible="{Binding IsExpenseSelected}">
+                        <TextBlock Text="Forma de pagamento" FontSize="12" FontWeight="Medium" />
+                        <ComboBox ItemsSource="{Binding PaymentMethods}" SelectedItem="{Binding SelectedPaymentMethod}" Height="40" HorizontalAlignment="Stretch" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="8" IsVisible="{Binding IsExpenseSelected}">
+                        <CheckBox IsChecked="{Binding IsInstallmentPurchase}" IsVisible="{Binding IsCreatingTransaction}" Content="Compra parcelada" />
+                        <StackPanel Spacing="7" IsVisible="{Binding IsInstallmentPurchase}">
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                                <StackPanel Spacing="5"><TextBlock Text="Total de parcelas" FontSize="12" /><NumericUpDown Value="{Binding InstallmentCount}" Minimum="2" Maximum="60" Increment="1" FormatString="N0" Height="40" /></StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="5"><TextBlock Text="Primeira parcela a registrar" FontSize="12" /><NumericUpDown Value="{Binding InstallmentStart}" Minimum="1" Maximum="60" Increment="1" FormatString="N0" Height="40" /></StackPanel>
+                            </Grid>
+                            <TextBlock Text="Informe o valor total da compra. No cartao, a data e a da compra; parcelas anteriores a inicial nao serao recriadas." IsVisible="{Binding IsCardPurchase}" Classes="muted" FontSize="11" TextWrapping="Wrap" />
+                            <TextBlock Text="Informe o valor total da compra. A data e a do pagamento desta parcela; as proximas viram pendencias." IsVisible="{Binding !IsCardPurchase}" Classes="muted" FontSize="11" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <StackPanel Grid.Column="0" Spacing="6" IsVisible="{Binding !IsCardPurchase}">
+                            <TextBlock Text="Conta" FontSize="12" FontWeight="Medium" />
+                            <ComboBox ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}" Height="40" HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="0" Spacing="6" IsVisible="{Binding IsCardPurchase}">
+                            <TextBlock Text="Cartao" FontSize="12" FontWeight="Medium" />
+                            <ComboBox ItemsSource="{Binding CreditCards}" SelectedItem="{Binding SelectedPurchaseCard}" Height="40" HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="6" IsVisible="{Binding !IsTransferSelected}">
+                            <TextBlock Text="Categoria" FontSize="12" FontWeight="Medium" />
+                            <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" Height="40" HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="6" IsVisible="{Binding IsTransferSelected}">
+                            <TextBlock Text="Conta de destino" FontSize="12" FontWeight="Medium" />
+                            <ComboBox ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedDestinationAccount}" Height="40" HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Text="{Binding FormError}"
+                               Foreground="{StaticResource NegativeBrush}"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,4,0,0">
+                        <Button Content="Cancelar" Command="{Binding CloseTransactionFormCommand}" Height="38" Padding="14,0" />
+                        <Button Classes="primary" Content="{Binding TransactionSaveButtonText}" Command="{Binding SaveTransactionCommand}" IsEnabled="{Binding !IsSaving}" />
+                    </StackPanel>
+                </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Border>
+
+        <Border Grid.ColumnSpan="2" IsVisible="{Binding IsPayableFormOpen}" Background="#66000000">
+            <Border Width="540" MaxHeight="690" Padding="26" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="16">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel><TextBlock Text="Nova pendencia" FontSize="21" FontWeight="Medium" /><TextBlock Text="Organize uma conta avulsa ou programe uma recorrencia" Classes="muted" FontSize="12" Margin="0,4,0,0" /></StackPanel>
+                        <Button Grid.Column="1" Classes="icon-button" Command="{Binding ClosePayableFormCommand}" ToolTip.Tip="Fechar"><LucideIcon Kind="X" Size="17" /></Button>
+                    </Grid>
+                    <StackPanel Spacing="6"><TextBlock Text="Descricao" FontSize="12" FontWeight="Medium" /><TextBox Text="{Binding PayableDescription}" PlaceholderText="Ex.: Aluguel" Height="40" /></StackPanel>
+                    <Grid ColumnDefinitions="0.8*,1.2*" ColumnSpacing="14">
+                        <StackPanel Spacing="6"><TextBlock Text="{Binding PayableAmountLabel}" FontSize="12" FontWeight="Medium" /><NumericUpDown Value="{Binding PayableAmount}" FormatString="N2" Minimum="0.01" Maximum="1000000000" Increment="1" Height="40" /></StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="6"><TextBlock Text="Vencimento" FontSize="12" FontWeight="Medium" /><CalendarDatePicker SelectedDate="{Binding PayableDueDate}" SelectedDateFormat="Custom" CustomDateFormatString="dd/MM/yyyy" PlaceholderText="dd/mm/aaaa" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" VerticalContentAlignment="Center" /></StackPanel>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <StackPanel Spacing="6"><TextBlock Text="Conta para pagamento" FontSize="12" FontWeight="Medium" /><ComboBox ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedPayableAccount}" Height="40" HorizontalAlignment="Stretch" /></StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="6"><TextBlock Text="Categoria" FontSize="12" FontWeight="Medium" /><ComboBox ItemsSource="{Binding ExpenseCategoryOptions}" SelectedItem="{Binding SelectedPayableCategory}" Height="40" HorizontalAlignment="Stretch" /></StackPanel>
+                    </Grid>
+                    <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="7" Padding="12,10">
+                        <CheckBox IsChecked="{Binding IsRecurringPayable}" Content="Repetir mensalmente a partir deste vencimento" VerticalAlignment="Center" />
+                    </Border>
+                    <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="7" Padding="12,10">
+                        <StackPanel Spacing="8">
+                            <CheckBox IsChecked="{Binding IsInstallmentPayable}" Content="Compra parcelada" />
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="12" IsVisible="{Binding IsInstallmentPayable}">
+                                <StackPanel Spacing="5"><TextBlock Text="Total de parcelas" FontSize="12" /><NumericUpDown Value="{Binding PayableInstallmentCount}" Minimum="2" Maximum="60" Increment="1" FormatString="N0" Height="40" /></StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="5"><TextBlock Text="Primeira parcela em aberto" FontSize="12" /><NumericUpDown Value="{Binding PayableInstallmentStart}" Minimum="1" Maximum="60" Increment="1" FormatString="N0" Height="40" /></StackPanel>
+                            </Grid>
+                            <TextBlock Text="Informe o valor de cada parcela e o vencimento da primeira ainda nao paga. As anteriores nao serao recriadas." IsVisible="{Binding IsInstallmentPayable}" Classes="muted" FontSize="11" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Text="{Binding PayableError}" Foreground="{StaticResource NegativeBrush}" FontSize="12" TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,2,0,0"><Button Content="Cancelar" Command="{Binding ClosePayableFormCommand}" Height="40" Padding="16,0" /><Button Classes="primary" Content="Salvar pendencia" Command="{Binding SavePayableCommand}" Height="40" Padding="18,0" /></StackPanel>
+                </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Border>
+
+        <Border Grid.ColumnSpan="2"
+                IsVisible="{Binding IsSettingsOpen}"
+                Background="#66000000">
+            <Border Width="760"
+                    Height="620"
+                    Padding="24"
+                    Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Grid RowDefinitions="Auto,*,Auto,Auto">
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,18">
+                        <StackPanel>
+                            <TextBlock Text="Contas e categorias" FontSize="20" FontWeight="Medium" />
+                            <TextBlock Text="Cadastros usados nos lancamentos" Classes="muted" FontSize="12" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="icon-button" Command="{Binding CloseSettingsCommand}" ToolTip.Tip="Fechar">
+                            <LucideIcon Kind="X" Size="17" />
+                        </Button>
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="22" Margin="0,0,8,0">
+                        <StackPanel Grid.Column="0" Spacing="10">
+                            <TextBlock Text="Contas" Classes="section-title" />
+                            <Grid>
+                            <Border IsVisible="{Binding !IsAccountListEmpty}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="7" Padding="10,2">
+                                <ScrollViewer MaxHeight="138" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                <ItemsControl ItemsSource="{Binding Accounts}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:AccountOption">
+                                            <Grid ColumnDefinitions="*,Auto,32" ColumnSpacing="8" Margin="0,7">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" />
+                                                    <TextBlock Text="{Binding TypeName}" Classes="muted" FontSize="11" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1" Text="{Binding InitialBalance}" FontSize="12" VerticalAlignment="Center" />
+                                                <Button Grid.Column="2"
+                                                        Width="32"
+                                                        Height="32"
+                                                        Padding="0"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Foreground="{StaticResource MutedTextBrush}"
+                                                        ToolTip.Tip="Excluir conta"
+                                                        Command="{Binding Owner.RequestDeleteAccountCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <LucideIcon Kind="Trash" Size="15" />
+                                                </Button>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+                            <Border IsVisible="{Binding IsAccountListEmpty}" Height="76" Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="7">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="5"><LucideIcon Kind="WalletCards" Size="20" Foreground="{StaticResource AccentBrush}" /><TextBlock Text="Nenhuma conta cadastrada" Classes="muted" FontSize="11" /></StackPanel>
+                            </Border>
+                            </Grid>
+                            <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="7" Padding="12" Margin="0,4,0,0">
+                            <StackPanel Spacing="9">
+                                <TextBlock Text="Nova conta" FontSize="12" FontWeight="Medium" />
+                                <TextBox Text="{Binding NewAccountName}" PlaceholderText="Nome da conta" Height="40" />
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="8"><ComboBox ItemsSource="{Binding AccountTypes}" SelectedItem="{Binding SelectedAccountType}" Height="40" /><NumericUpDown Grid.Column="1" Value="{Binding NewAccountBalance}" FormatString="N2" Minimum="-1000000000" Maximum="1000000000" Increment="1" Height="40" /></Grid>
+                                <Button Classes="primary" Content="Adicionar conta" Command="{Binding SaveAccountCommand}" HorizontalAlignment="Left" />
+                            </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Spacing="10">
+                            <TextBlock Text="Categorias" Classes="section-title" />
+                            <Grid>
+                            <Border IsVisible="{Binding !IsCategoryListEmpty}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="7" Padding="10,2">
+                                <ScrollViewer MaxHeight="138" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                <ItemsControl ItemsSource="{Binding AllCategoryOptions}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:CategoryOption">
+                                            <Grid ColumnDefinitions="*,Auto,32" ColumnSpacing="8" Margin="0,7">
+                                                <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" />
+                                                <TextBlock Grid.Column="1" Text="{Binding TypeName}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <Button Grid.Column="2"
+                                                        Width="32"
+                                                        Height="32"
+                                                        Padding="0"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Foreground="{StaticResource MutedTextBrush}"
+                                                        ToolTip.Tip="Excluir categoria"
+                                                        Command="{Binding Owner.RequestDeleteCategoryCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <LucideIcon Kind="Trash" Size="15" />
+                                                </Button>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+                            <Border IsVisible="{Binding IsCategoryListEmpty}" Height="76" Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="7">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="5"><LucideIcon Kind="Tags" Size="20" Foreground="{StaticResource AccentBrush}" /><TextBlock Text="Nenhuma categoria cadastrada" Classes="muted" FontSize="11" /></StackPanel>
+                            </Border>
+                            </Grid>
+                            <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="7" Padding="12" Margin="0,4,0,0">
+                            <StackPanel Spacing="9">
+                                <TextBlock Text="Nova categoria" FontSize="12" FontWeight="Medium" />
+                                <TextBox Text="{Binding NewCategoryName}" PlaceholderText="Nome da categoria" Height="40" />
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="8"><ComboBox ItemsSource="{Binding CategoryTypes}" SelectedItem="{Binding SelectedCategoryType}" Height="40" /><ComboBox Grid.Column="1" ItemsSource="{Binding ParentCategoryOptions}" SelectedItem="{Binding SelectedParentCategory}" PlaceholderText="Categoria principal (opcional)" Height="40" /></Grid>
+                                <Button Classes="primary" Content="Adicionar categoria" Command="{Binding SaveCategoryCommand}" HorizontalAlignment="Left" />
+                            </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                    </ScrollViewer>
+
+                    <Border Grid.Row="2" Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="7" Padding="14" Margin="0,14,0,0">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="14">
+                            <StackPanel><TextBlock Text="Backup local" FontWeight="Medium" /><TextBlock Text="{Binding BackupStatusText}" Classes="muted" FontSize="11" /></StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"><Button Classes="primary" Content="Criar copia" Command="{Binding CreateBackupCommand}" /><Button Content="Restaurar copia" Command="{Binding RequestRestoreLatestBackupCommand}" IsEnabled="{Binding HasBackups}" /></StackPanel>
+                        </Grid>
+                    </Border>
+                    <StackPanel Grid.Row="3" Margin="0,12,0,0">
+                        <TextBlock Text="{Binding SettingsNotice}"
+                                   Foreground="{StaticResource PositiveBrush}"
+                                   FontSize="12"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding SettingsError}"
+                                   Foreground="{StaticResource NegativeBrush}"
+                                   FontSize="12"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Border>
+
+        <Border Grid.ColumnSpan="2"
+                IsVisible="{Binding IsCardsOpen}"
+                Background="#66000000">
+            <Border Width="780"
+                    MaxHeight="700"
+                    Padding="26"
+                    Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Margin="0,0,0,18">
+                        <Border Width="44" Height="44" CornerRadius="10" Background="{StaticResource SurfaceAltBrush}"><LucideIcon Kind="CreditCard" Size="21" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Cartoes de credito" FontSize="21" FontWeight="Medium" />
+                            <TextBlock Text="Gerencie limites, datas e contas de pagamento" Classes="muted" FontSize="11" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <Button Grid.Column="2" Classes="icon-button" Command="{Binding CloseCardsCommand}" ToolTip.Tip="Fechar">
+                            <LucideIcon Kind="X" Size="17" />
+                        </Button>
+                    </Grid>
+
+                    <Grid Grid.Row="1">
+                    <Border IsVisible="{Binding HasCreditCards}">
+                        <ScrollViewer MaxHeight="230" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl ItemsSource="{Binding CreditCards}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:CreditCardOption">
+                                        <Border Classes="credit-card-entry">
+                                            <Grid ColumnDefinitions="Auto,*,130,170,Auto,Auto" ColumnSpacing="12">
+                                                <Border Width="40" Height="40" CornerRadius="8" Background="{StaticResource SurfaceBrush}"><LucideIcon Kind="CreditCard" Size="19" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Medium" /><TextBlock Text="{Binding AccountName, StringFormat='{}Pagamento: {0}'}" Classes="muted" FontSize="10" /></StackPanel>
+                                                <StackPanel Grid.Column="2" VerticalAlignment="Center"><TextBlock Text="Limite" Classes="muted" FontSize="10" /><TextBlock Text="{Binding LimitText}" Foreground="{StaticResource AccentBrush}" FontWeight="Medium" /></StackPanel>
+                                                <Grid Grid.Column="3" ColumnDefinitions="*,*" ColumnSpacing="8" VerticalAlignment="Center"><StackPanel><TextBlock Text="Fecha" Classes="muted" FontSize="10" /><TextBlock Text="{Binding ClosingDay, StringFormat='{}Dia {0}'}" FontWeight="Medium" /></StackPanel><StackPanel Grid.Column="1"><TextBlock Text="Vence" Classes="muted" FontSize="10" /><TextBlock Text="{Binding DueDay, StringFormat='{}Dia {0}'}" FontWeight="Medium" /></StackPanel></Grid>
+                                                <Button Grid.Column="4" Classes="icon-button" ToolTip.Tip="Editar cartao" Command="{Binding Owner.EditCreditCardCommand}" CommandParameter="{Binding}"><LucideIcon Kind="Pencil" Size="15" /></Button>
+                                                <Button Grid.Column="5" Classes="icon-button" ToolTip.Tip="Excluir cartao" Command="{Binding Owner.RequestDeleteCreditCardCommand}" CommandParameter="{Binding}"><LucideIcon Kind="Trash" Size="15" /></Button>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                    <Border IsVisible="{Binding IsCreditCardListEmpty}"
+                            Height="112" Background="{StaticResource SurfaceAltBrush}"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="9">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+                            <LucideIcon Kind="CreditCard" Size="26" Foreground="{StaticResource MutedTextBrush}" />
+                            <TextBlock Text="Nenhum cartao cadastrado" FontWeight="Medium" />
+                            <TextBlock Text="Adicione o primeiro cartao usando o formulario abaixo." Classes="muted" FontSize="10" />
+                        </StackPanel>
+                    </Border>
+                    </Grid>
+
+                    <Border Grid.Row="2" Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="9" Padding="16" Margin="0,14,0,0">
+                    <StackPanel Spacing="13">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10"><Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource SurfaceBrush}"><LucideIcon Kind="CreditCard" Size="17" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{Binding CardFormTitle}" FontSize="16" FontWeight="Medium" /><TextBlock Text="Informe os dados usados no controle das faturas" Classes="muted" FontSize="10" /></StackPanel></Grid>
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Nome" FontSize="12" FontWeight="Medium" />
+                                <TextBox Text="{Binding NewCardName}" PlaceholderText="Ex.: Cartao principal" Height="40" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="6">
+                                <TextBlock Text="Conta de pagamento" FontSize="12" FontWeight="Medium" />
+                                <ComboBox ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedCardPaymentAccount}" Height="40" HorizontalAlignment="Stretch" />
+                            </StackPanel>
+                        </Grid>
+                        <Grid ColumnDefinitions="2*,*,*" ColumnSpacing="12">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Limite" FontSize="12" FontWeight="Medium" />
+                                <NumericUpDown Value="{Binding NewCardLimit}" FormatString="N2" Minimum="0.01" Maximum="1000000000" Increment="100" Height="40" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="6">
+                                <TextBlock Text="Dia do fechamento" FontSize="12" FontWeight="Medium" />
+                                <TextBox Text="{Binding NewCardClosingDay}" Height="40" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="6">
+                                <TextBlock Text="Dia do vencimento" FontSize="12" FontWeight="Medium" />
+                                <TextBox Text="{Binding NewCardDueDay}" Height="40" />
+                            </StackPanel>
+                        </Grid>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8"><Button Classes="primary" Content="{Binding CardSaveButtonText}" Command="{Binding SaveCreditCardCommand}" Height="40" HorizontalAlignment="Stretch" /><Button Grid.Column="1" Content="Cancelar edicao" Command="{Binding CancelCreditCardEditCommand}" IsVisible="{Binding IsEditingCreditCard}" Height="40" /></Grid>
+                    </StackPanel>
+                    </Border>
+
+                    <StackPanel Grid.Row="3" Margin="0,10,0,0">
+                        <TextBlock Text="{Binding CardNotice}" Foreground="{StaticResource PositiveBrush}" FontSize="12" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding CardError}" Foreground="{StaticResource NegativeBrush}" FontSize="12" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Border>
+
+        <Border Grid.ColumnSpan="2"
+                IsVisible="{Binding IsDeleteConfirmationOpen}"
+                Background="#66000000">
+            <Border Width="390"
+                    Padding="22"
+                    Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <StackPanel Spacing="14">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <LucideIcon Kind="TriangleAlert" Size="20" Foreground="{StaticResource NegativeBrush}" />
+                        <TextBlock Text="Confirmar exclusao" FontSize="17" FontWeight="Medium" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding DeleteConfirmationText}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding DeleteConfirmationHint}"
+                               Classes="muted"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                        <Button Content="Cancelar" Command="{Binding CancelDeleteCommand}" Height="38" Padding="14,0" />
+                        <Button Classes="danger" Content="Excluir" Command="{Binding ConfirmDeleteCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <Border Grid.ColumnSpan="2" IsVisible="{Binding IsRestoreConfirmationOpen}" Background="#66000000">
+            <Border Width="430" Padding="22" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel Spacing="14">
+                    <StackPanel Orientation="Horizontal" Spacing="10"><LucideIcon Kind="TriangleAlert" Size="20" Foreground="{StaticResource ChartExpenseBrush}" /><TextBlock Text="Restaurar backup?" FontSize="17" FontWeight="Medium" /></StackPanel>
+                    <TextBlock Text="Os dados atuais serao substituidos pelo backup mais recente." TextWrapping="Wrap" />
+                    <TextBlock Text="Uma copia de seguranca do estado atual sera criada automaticamente antes da restauracao." Classes="muted" FontSize="12" TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8"><Button Content="Cancelar" Command="{Binding CancelRestoreBackupCommand}" /><Button Classes="primary" Content="Restaurar" Command="{Binding ConfirmRestoreBackupCommand}" /></StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <Border Grid.ColumnSpan="2" IsVisible="{Binding IsLoginOpen}" Background="{StaticResource AppBackgroundBrush}">
+            <Grid ColumnDefinitions="1.05*,0.95*">
+                <Border Background="{StaticResource SidebarBrush}" Padding="54">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="430" Spacing="18">
+                        <Image Width="118" Height="118" Source="/Assets/nick-financas-logo.png" Stretch="Uniform" />
+                        <TextBlock Text="Nick FinanÃ§as" Foreground="#F3F7FF" FontSize="28" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        <TextBlock Text="Organizem a vida financeira com seguranca, cada pessoa usando seu proprio acesso." Foreground="#B8C8DC" FontSize="14" TextAlignment="Center" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="1" Width="430" Padding="34" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="14" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <StackPanel Spacing="16">
+                        <StackPanel Spacing="5"><TextBlock Text="{Binding LoginTitle}" FontSize="24" FontWeight="SemiBold" /><TextBlock Text="Selecione seu nome e informe seu PIN." Classes="muted" FontSize="12" /></StackPanel>
+                        <StackPanel Spacing="6"><TextBlock Text="Quem esta entrando?" FontSize="12" FontWeight="Medium" /><ComboBox ItemsSource="{Binding LoginUsers}" SelectedItem="{Binding SelectedLoginUser}" Height="42" /></StackPanel>
+                        <StackPanel Spacing="6"><TextBlock Text="PIN" FontSize="12" FontWeight="Medium" /><TextBox Text="{Binding LoginPin}" PasswordChar="●" PlaceholderText="4 a 8 numeros" MaxLength="8" Height="42" /></StackPanel>
+                        <StackPanel Spacing="6" IsVisible="{Binding IsCreatingPin}"><TextBlock Text="Confirmar PIN" FontSize="12" FontWeight="Medium" /><TextBox Text="{Binding LoginPinConfirmation}" PasswordChar="●" PlaceholderText="Digite novamente" MaxLength="8" Height="42" /><TextBlock Text="Este e o primeiro acesso deste participante. Crie um PIN pessoal." Classes="muted" FontSize="11" TextWrapping="Wrap" /></StackPanel>
+                        <CheckBox Content="Continuar conectado neste computador" IsChecked="{Binding RememberLogin}" />
+                        <TextBlock Text="{Binding LoginError}" Foreground="{StaticResource NegativeBrush}" TextWrapping="Wrap" />
+                        <Button Classes="primary" Content="{Binding LoginActionText}" Command="{Binding LoginCommand}" Height="44" HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+
+</Window>
